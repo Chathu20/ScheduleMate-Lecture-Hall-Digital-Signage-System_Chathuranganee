@@ -1,0 +1,107 @@
+   generator client {
+     provider = "prisma-client-js"
+   }
+
+   datasource db {
+     provider = "postgresql"
+     url      = env("DATABASE_URL")
+   }
+
+   model Building {
+  building_id Int    @id @default(autoincrement())
+  name        String
+  floors      Floor[]
+}
+
+model Floor {
+  floor_id        Int      @id @default(autoincrement())
+  building_id     Int
+  floor_number    Int
+  is_full_lab_floor Boolean @default(false)
+  building        Building @relation(fields: [building_id], references: [building_id])
+  sides           Side[]
+}
+
+model Side {
+  side_id      Int          @id @default(autoincrement())
+  floor_id     Int
+  side_code    String
+  floor        Floor        @relation(fields: [floor_id], references: [floor_id])
+  rooms        Room[]
+  displayDevice DisplayDevice?
+}
+
+model Room {
+  room_id   Int      @id @default(autoincrement())
+  side_id   Int
+  room_code String
+  capacity  Int
+  room_type String
+  side      Side     @relation(fields: [side_id], references: [side_id])
+  sessions  Session[]
+}
+
+model Module {
+  module_id   Int       @id @default(autoincrement())
+  module_code String    @unique
+  module_name String
+  sessions    Session[]
+}
+
+model Lecturer {
+  lecturer_id Int       @id @default(autoincrement())
+  full_name   String
+  email       String    @unique
+  sessions    Session[]
+}
+
+model DisplayDevice {
+  display_id  Int    @id @default(autoincrement())
+  device_name String
+  status      String @default("OFFLINE")
+  side_id     Int    @unique
+  side        Side   @relation(fields: [side_id], references: [side_id])
+}
+
+model Admin {
+  admin_id      Int      @id @default(autoincrement())
+  username      String   @unique
+  password_hash String
+  role          String   // "ADMIN" or "SUPER_ADMIN"
+  createdSessions Session[] @relation("CreatedBy")
+  changes       SessionChange[]
+}
+
+model Session {
+  session_id   Int      @id @default(autoincrement())
+  room_id      Int
+  module_id    Int
+  lecturer_id  Int
+  created_by   Int
+  session_date DateTime
+  day_of_week  String
+  start_time   DateTime
+  end_time     DateTime
+  status       String   // ACTIVE, CANCELLED, RESCHEDULED
+  session_type String   // LECTURE, LAB
+  room         Room     @relation(fields: [room_id], references: [room_id])
+  module       Module   @relation(fields: [module_id], references: [module_id])
+  lecturer     Lecturer @relation(fields: [lecturer_id], references: [lecturer_id])
+  createdByAdmin Admin  @relation("CreatedBy", fields: [created_by], references: [admin_id])
+  changes      SessionChange[]
+}
+
+model SessionChange {
+  change_id      Int      @id @default(autoincrement())
+  session_id     Int
+  changed_by     Int
+  change_type    String   // CANCEL, RESCHEDULE
+  reason         String?
+  new_date       DateTime?
+  new_start_time DateTime?
+  new_end_time   DateTime?
+  new_room_id    Int?
+  changed_at     DateTime @default(now())
+  session        Session  @relation(fields: [session_id], references: [session_id])
+  changedByAdmin Admin    @relation(fields: [changed_by], references: [admin_id])
+}
