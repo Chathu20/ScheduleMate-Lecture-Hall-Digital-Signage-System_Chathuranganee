@@ -39,6 +39,8 @@ model Room {
   room_type String
   side      Side     @relation(fields: [side_id], references: [side_id])
   sessions  Session[]
+
+  @@unique([side_id, room_code])
 }
 
 model Module {
