@@ -1,4 +1,3 @@
-
 import { Router } from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
@@ -32,16 +31,73 @@ router.post("/login", async (req, res) => {
       });
     }
 
+    // Check whether the account is deactivated
+    if (!admin.is_active) {
+      return res.status(403).json({
+        message: "Account is deactivated",
+      });
+    }
+
+    // Check whether the account is currently locked
+    if (admin.locked_until && admin.locked_until > new Date()) {
+      return res.status(403).json({
+        message: "Account locked. Try again later.",
+      });
+    }
+
+    // Check password
     const passwordValid = await bcrypt.compare(
       password,
       admin.password_hash
     );
 
+    // Wrong password
     if (!passwordValid) {
+      const newFailedAttempts = admin.failed_attempts + 1;
+
+      // Lock account after 5 consecutive failed attempts
+      if (newFailedAttempts >= 5) {
+        const lockedUntil = new Date(Date.now() + 15 * 60 * 1000);
+
+        await prisma.admin.update({
+          where: {
+            admin_id: admin.admin_id,
+          },
+          data: {
+            failed_attempts: newFailedAttempts,
+            locked_until: lockedUntil,
+          },
+        });
+
+        return res.status(401).json({
+          message: "Invalid username or password",
+        });
+      }
+
+      await prisma.admin.update({
+        where: {
+          admin_id: admin.admin_id,
+        },
+        data: {
+          failed_attempts: newFailedAttempts,
+        },
+      });
+
       return res.status(401).json({
         message: "Invalid username or password",
       });
     }
+
+    // Successful login resets failed attempts
+    await prisma.admin.update({
+      where: {
+        admin_id: admin.admin_id,
+      },
+      data: {
+        failed_attempts: 0,
+        locked_until: null,
+      },
+    });
 
     const jwtSecret = process.env.JWT_SECRET;
 
@@ -82,4 +138,3 @@ router.post("/login", async (req, res) => {
 });
 
 export default router;
-

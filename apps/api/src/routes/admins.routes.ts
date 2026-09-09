@@ -71,4 +71,30 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+router.patch('/:id/deactivate', async (req, res) => {
+  try {
+    const admin = await prisma.admin.update({
+      where: { admin_id: Number(req.params.id) },
+      data: { is_active: false },
+      select: { admin_id: true, username: true, is_active: true },
+    });
+    res.json(admin);
+  } catch (error) {
+    res.status(404).json({ message: 'Admin not found' });
+  }
+});
+
+router.patch('/:id/reactivate', async (req, res) => {
+  try {
+    const admin = await prisma.admin.update({
+      where: { admin_id: Number(req.params.id) },
+      data: { is_active: true, failed_attempts: 0, locked_until: null },
+      select: { admin_id: true, username: true, is_active: true },
+    });
+    res.json(admin);
+  } catch (error) {
+    res.status(404).json({ message: 'Admin not found' });
+  }
+});
+
 export default router;

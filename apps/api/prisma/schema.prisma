@@ -70,6 +70,7 @@ model Admin {
   username      String   @unique
   password_hash String
   role          String
+  is_active     Boolean  @default(true)
   failed_attempts Int      @default(0)
   locked_until    DateTime?
   createdSessions Session[] @relation("CreatedBy")

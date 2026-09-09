@@ -11,6 +11,7 @@ import adminsRoutes from "./routes/admins.routes";
 import floorsRoutes from "./routes/floors.routes";
 import sidesRoutes from "./routes/sides.routes";
 import roomsRoutes from "./routes/rooms.routes";
+import profileRoutes from "./routes/profile.routes";
 
 const app = express();
 
@@ -31,5 +32,6 @@ app.use("/api/admins", adminsRoutes);
 app.use("/api/floors", floorsRoutes);
 app.use("/api/sides", sidesRoutes);
 app.use("/api/rooms", roomsRoutes);
+app.use('/api/profile', profileRoutes);
 
 export default app;
