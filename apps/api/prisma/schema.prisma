@@ -67,7 +67,9 @@ model Admin {
   admin_id      Int      @id @default(autoincrement())
   username      String   @unique
   password_hash String
-  role          String   // "ADMIN" or "SUPER_ADMIN"
+  role          String
+  failed_attempts Int      @default(0)
+  locked_until    DateTime?
   createdSessions Session[] @relation("CreatedBy")
   changes       SessionChange[]
 }
