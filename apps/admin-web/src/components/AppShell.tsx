@@ -12,6 +12,7 @@ export function AppShell() {
           <li><NavLink to="/">Dashboard</NavLink></li>
           <li><NavLink to="/campus-structure">Buildings / Rooms</NavLink></li>
           <li><NavLink to="/modules-lecturers">Modules & Lecturers</NavLink></li>
+          <li><NavLink to="/sessions">Schedule</NavLink></li>
         </ul>
         <hr />
         <p style={{ fontSize: 14 }}>{admin?.username} ({admin?.role})</p>

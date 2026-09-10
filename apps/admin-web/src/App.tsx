@@ -6,7 +6,7 @@ import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { CampusStructurePage } from './pages/CampusStructurePage';
 import { ModulesLecturersPage } from './pages/ModulesLecturersPage';
-
+import { SessionsPage } from './pages/SessionsPage';
 function App() {
   return (
     <BrowserRouter>
@@ -23,6 +23,7 @@ function App() {
             <Route path="/" element={<DashboardPage />} />
             <Route path="/campus-structure" element={<CampusStructurePage />} />
             <Route path="/modules-lecturers" element={<ModulesLecturersPage />} />
+            <Route path="/sessions" element={<SessionsPage />} />
           </Route>
         </Routes>
       </AuthProvider>
