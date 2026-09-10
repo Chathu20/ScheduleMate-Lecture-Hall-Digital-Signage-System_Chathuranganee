@@ -111,6 +111,35 @@ router.get('/:side_id', async (req, res) => {
       }
     }
 
+    // FR-19: Live Room Status per room on this side
+    const UPCOMING_SOON_MS = 15 * 60 * 1000;
+    const liveRoomStatus = rooms.map((room) => {
+      const roomSessions = sessions.filter((s) => {
+        const eff = getEffectiveSlot(s);
+        return eff.room_id === room.room_id && (s.status === 'ACTIVE' || s.status === 'RESCHEDULED');
+      });
+
+      const current = roomSessions.find((s) => {
+        const eff = getEffectiveSlot(s);
+        return eff.start_time <= now && now < eff.end_time;
+      });
+      if (current) return { room_code: room.room_code, status: 'Ongoing Now' };
+
+      const soon = roomSessions.find((s) => {
+        const eff = getEffectiveSlot(s);
+        return eff.start_time > now && eff.start_time.getTime() - now.getTime() <= UPCOMING_SOON_MS;
+      });
+      if (soon) return { room_code: room.room_code, status: 'Upcoming Soon' };
+
+      const finishedToday = roomSessions.find((s) => {
+        const eff = getEffectiveSlot(s);
+        return eff.end_time <= now;
+      });
+      if (finishedToday) return { room_code: room.room_code, status: 'Session Finished' };
+
+      return { room_code: room.room_code, status: 'Available' };
+    });
+
     res.json({
       side_id: sideId,
       server_time: now,
@@ -118,6 +147,7 @@ router.get('/:side_id', async (req, res) => {
       upcoming: upcoming.slice(0, 5), // FR-14: configurable count, default 5
       cancelled,
       rescheduled,
+      liveRoomStatus,
     });
   } catch (error) {
     console.error(error);

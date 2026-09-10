@@ -13,6 +13,7 @@ import sidesRoutes from "./routes/sides.routes";
 import roomsRoutes from "./routes/rooms.routes";
 import profileRoutes from "./routes/profile.routes";
 import signageRoutes from './routes/signage.routes';
+import dashboardRoutes from './routes/dashboard.routes';
 
 const app = express();
 
@@ -35,5 +36,6 @@ app.use("/api/sides", sidesRoutes);
 app.use("/api/rooms", roomsRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/signage', signageRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 export default app;
