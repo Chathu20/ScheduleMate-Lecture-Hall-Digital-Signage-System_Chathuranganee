@@ -319,4 +319,147 @@ router.put('/:id', async (req, res) => {
   }
 });
 
+// CANCEL a session (FR-10)
+router.patch('/:id/cancel', async (req: AuthenticatedRequest, res) => {
+  try {
+    const sessionId = Number(req.params.id);
+    const { reason } = req.body;
+
+    const session = await prisma.session.findUnique({
+      where: {
+        session_id: sessionId,
+      },
+    });
+
+    if (!session) {
+      return res.status(404).json({
+        message: 'Session not found',
+      });
+    }
+
+    const [updatedSession] = await prisma.$transaction([
+      prisma.session.update({
+        where: {
+          session_id: sessionId,
+        },
+        data: {
+          status: 'CANCELLED',
+        },
+      }),
+      prisma.sessionChange.create({
+        data: {
+          session_id: sessionId,
+          changed_by: req.admin!.admin_id,
+          change_type: 'CANCEL',
+          reason: reason || null,
+        },
+      }),
+    ]);
+
+    res.json(updatedSession);
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      message: 'Failed to cancel session',
+    });
+  }
+});
+
+// RESCHEDULE a session (FR-11)
+router.patch('/:id/reschedule', async (req: AuthenticatedRequest, res) => {
+  try {
+    const sessionId = Number(req.params.id);
+
+    const {
+      new_room_id,
+      new_date,
+      new_start_time,
+      new_end_time,
+    } = req.body;
+
+    if (
+      !new_room_id ||
+      !new_date ||
+      !new_start_time ||
+      !new_end_time
+    ) {
+      return res.status(400).json({
+        message:
+          'new_room_id, new_date, new_start_time, and new_end_time are required',
+      });
+    }
+
+    const session = await prisma.session.findUnique({
+      where: {
+        session_id: sessionId,
+      },
+    });
+
+    if (!session) {
+      return res.status(404).json({
+        message: 'Session not found',
+      });
+    }
+
+    const parsedDate = new Date(new_date);
+    const parsedStart = new Date(new_start_time);
+    const parsedEnd = new Date(new_end_time);
+
+    // Same conflict check as create/update — the new slot must also be free
+    const conflict = await findConflictingSession(
+      new_room_id,
+      parsedDate,
+      parsedStart,
+      parsedEnd,
+      sessionId
+    );
+
+    if (conflict) {
+      return res.status(409).json({
+        message:
+          'The new time slot conflicts with an existing session',
+
+        conflictingSession: {
+          session_id: conflict.session_id,
+          module: conflict.module.module_name,
+          lecturer: conflict.lecturer.full_name,
+          start_time: conflict.start_time,
+          end_time: conflict.end_time,
+        },
+      });
+    }
+
+    const [updatedSession] = await prisma.$transaction([
+      prisma.session.update({
+        where: {
+          session_id: sessionId,
+        },
+        data: {
+          status: 'RESCHEDULED',
+        },
+      }),
+      prisma.sessionChange.create({
+        data: {
+          session_id: sessionId,
+          changed_by: req.admin!.admin_id,
+          change_type: 'RESCHEDULE',
+          new_room_id,
+          new_date: parsedDate,
+          new_start_time: parsedStart,
+          new_end_time: parsedEnd,
+        },
+      }),
+    ]);
+
+    res.json(updatedSession);
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      message: 'Failed to reschedule session',
+    });
+  }
+});
+
 export default router;
