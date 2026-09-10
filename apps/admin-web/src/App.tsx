@@ -4,6 +4,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { CampusStructurePage } from './pages/CampusStructurePage';
+import { ModulesLecturersPage } from './pages/ModulesLecturersPage';
 
 function App() {
   return (
@@ -27,6 +28,14 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+              path="/modules-lecturers"
+              element={
+                <ProtectedRoute>
+                  <ModulesLecturersPage />
+                </ProtectedRoute>
+              }
+            />
         </Routes>
       </AuthProvider>
     </BrowserRouter>
