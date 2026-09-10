@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import apiClient from '../lib/apiClient';
-import { useAuth } from '../context/AuthContext';
+
 
 interface DashboardCounts {
   date: string;
@@ -14,7 +14,7 @@ export function DashboardPage() {
   const [counts, setCounts] = useState<DashboardCounts | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const { admin, logout } = useAuth();
+
 
   useEffect(() => {
     async function fetchCounts() {
@@ -32,13 +32,7 @@ export function DashboardPage() {
 
   return (
     <div style={{ padding: 24, fontFamily: 'sans-serif' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <h1>Dashboard</h1>
-          <p>Welcome, {admin?.username} ({admin?.role})</p>
-        </div>
-        <button onClick={logout}>Logout</button>
-      </div>
+      <h1>Dashboard</h1>
 
       {loading && <p>Loading...</p>}
       {error && <p style={{ color: 'red' }}>{error}</p>}

@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { AppShell } from './components/AppShell';
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { CampusStructurePage } from './pages/CampusStructurePage';
@@ -13,29 +14,16 @@ function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route
-            path="/"
             element={
               <ProtectedRoute>
-                <DashboardPage />
+                <AppShell />
               </ProtectedRoute>
             }
-          />
-          <Route
-            path="/campus-structure"
-            element={
-              <ProtectedRoute>
-                <CampusStructurePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-              path="/modules-lecturers"
-              element={
-                <ProtectedRoute>
-                  <ModulesLecturersPage />
-                </ProtectedRoute>
-              }
-            />
+          >
+            <Route path="/" element={<DashboardPage />} />
+            <Route path="/campus-structure" element={<CampusStructurePage />} />
+            <Route path="/modules-lecturers" element={<ModulesLecturersPage />} />
+          </Route>
         </Routes>
       </AuthProvider>
     </BrowserRouter>
