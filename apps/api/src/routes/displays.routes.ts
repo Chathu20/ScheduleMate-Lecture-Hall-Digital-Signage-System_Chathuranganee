@@ -65,4 +65,14 @@ router.put('/:id', async (req, res) => {
   }
 });
 
+router.delete('/:id', async (req, res) => {
+  try {
+    await prisma.displayDevice.delete({ where: { display_id: Number(req.params.id) } });
+    res.status(204).send();
+  } catch (error) {
+    console.error(error);
+    res.status(404).json({ message: 'Display device not found' });
+  }
+});
+
 export default router;

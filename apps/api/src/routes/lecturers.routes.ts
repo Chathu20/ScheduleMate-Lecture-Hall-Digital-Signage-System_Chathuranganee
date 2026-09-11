@@ -60,4 +60,31 @@ router.put('/:id', async (req, res) => {
   }
 });
 
+// DELETE a lecturer — blocked while they have upcoming sessions
+router.delete('/:id', async (req, res) => {
+  const lecturerId = Number(req.params.id);
+  try {
+    const upcomingCount = await prisma.session.count({
+      where: {
+        lecturer_id: lecturerId,
+        status: { in: ['ACTIVE', 'RESCHEDULED'] },
+        session_date: { gte: new Date() },
+      },
+    });
+
+    if (upcomingCount > 0) {
+      return res.status(409).json({
+        message: `This lecturer is assigned to ${upcomingCount} upcoming session(s). Reassign or cancel those sessions before deleting.`,
+        upcomingCount,
+      });
+    }
+
+    await prisma.lecturer.delete({ where: { lecturer_id: lecturerId } });
+    res.status(204).send();
+  } catch (error) {
+    console.error(error);
+    res.status(404).json({ message: 'Lecturer not found' });
+  }
+});
+
 export default router;

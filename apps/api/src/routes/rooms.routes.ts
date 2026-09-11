@@ -51,4 +51,25 @@ router.put('/:id', async (req, res) => {
   }
 });
 
+// DELETE a room, along with any sessions scheduled in it
+router.delete('/:id', async (req, res) => {
+  const roomId = Number(req.params.id);
+  try {
+    const sessionIds = (
+      await prisma.session.findMany({ where: { room_id: roomId }, select: { session_id: true } })
+    ).map((s) => s.session_id);
+
+    await prisma.$transaction([
+      prisma.sessionChange.deleteMany({ where: { session_id: { in: sessionIds } } }),
+      prisma.session.deleteMany({ where: { room_id: roomId } }),
+      prisma.room.delete({ where: { room_id: roomId } }),
+    ]);
+
+    res.status(204).send();
+  } catch (error) {
+    console.error(error);
+    res.status(404).json({ message: 'Room not found' });
+  }
+});
+
 export default router;

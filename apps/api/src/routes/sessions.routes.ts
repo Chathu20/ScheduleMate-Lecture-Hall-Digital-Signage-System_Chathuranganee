@@ -1,9 +1,12 @@
 import { Router } from 'express';
+import crypto from 'crypto';
 import { prisma } from '../lib/prisma';
 import {
   authMiddleware,
   AuthenticatedRequest,
 } from '../middleware/auth.middleware';
+
+const RECURRING_WEEKLY_OCCURRENCES = 12;
 
 const router = Router();
 
@@ -55,9 +58,10 @@ router.get('/', async (req, res) => {
   try {
     const sessions = await prisma.session.findMany({
       include: {
-        room: true,
+        room: { include: { side: { include: { floor: true } } } },
         module: true,
         lecturer: true,
+        changes: { orderBy: { changed_at: 'desc' } },
       },
       orderBy: {
         session_date: 'asc',
@@ -116,6 +120,7 @@ router.post('/', async (req: AuthenticatedRequest, res) => {
       start_time,
       end_time,
       session_type,
+      repeat_weekly,
     } = req.body;
 
     if (
@@ -160,33 +165,52 @@ router.post('/', async (req: AuthenticatedRequest, res) => {
       });
     }
 
-    const session = await prisma.session.create({
-      data: {
-        room_id,
-        module_id,
-        lecturer_id,
-        created_by: req.admin!.admin_id,
+    const recurrence_group_id = repeat_weekly ? crypto.randomUUID() : null;
+    const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+    const occurrences = repeat_weekly ? RECURRING_WEEKLY_OCCURRENCES : 1;
 
-        session_date: parsedDate,
+    let firstSession = null;
+    let skippedCount = 0;
 
-        // Automatically derive day of week
-        day_of_week: deriveDayOfWeek(session_date),
+    for (let i = 0; i < occurrences; i++) {
+      const occDate = new Date(parsedDate.getTime() + i * WEEK_MS);
+      const occStart = new Date(parsedStart.getTime() + i * WEEK_MS);
+      const occEnd = new Date(parsedEnd.getTime() + i * WEEK_MS);
 
-        start_time: parsedStart,
-        end_time: parsedEnd,
+      if (i > 0) {
+        // For occurrences after the first, silently skip any that conflict
+        const occConflict = await findConflictingSession(room_id, occDate, occStart, occEnd);
+        if (occConflict) {
+          skippedCount++;
+          continue;
+        }
+      }
 
-        status: 'ACTIVE',
-        session_type,
-      },
+      const created = await prisma.session.create({
+        data: {
+          room_id,
+          module_id,
+          lecturer_id,
+          created_by: req.admin!.admin_id,
+          session_date: occDate,
+          day_of_week: deriveDayOfWeek(occDate.toISOString()),
+          start_time: occStart,
+          end_time: occEnd,
+          status: 'ACTIVE',
+          session_type,
+          recurrence_group_id: recurrence_group_id ?? undefined,
+        },
+        include: {
+          room: true,
+          module: true,
+          lecturer: true,
+        },
+      });
 
-      include: {
-        room: true,
-        module: true,
-        lecturer: true,
-      },
-    });
+      if (i === 0) firstSession = created;
+    }
 
-    res.status(201).json(session);
+    res.status(201).json({ ...firstSession, skippedCount });
   } catch (error: any) {
     console.error(error);
 
@@ -459,6 +483,46 @@ router.patch('/:id/reschedule', async (req: AuthenticatedRequest, res) => {
     res.status(500).json({
       message: 'Failed to reschedule session',
     });
+  }
+});
+
+// DELETE a single session record entirely
+router.delete('/:id', async (req, res) => {
+  try {
+    const sessionId = Number(req.params.id);
+    await prisma.$transaction([
+      prisma.sessionChange.deleteMany({ where: { session_id: sessionId } }),
+      prisma.session.delete({ where: { session_id: sessionId } }),
+    ]);
+    res.status(204).send();
+  } catch (error) {
+    console.error(error);
+    res.status(404).json({ message: 'Session not found' });
+  }
+});
+
+// DELETE every future occurrence of a recurring series; past ones are kept for history
+router.delete('/recurring/:groupId', async (req, res) => {
+  try {
+    const groupId = req.params.groupId;
+    const now = new Date();
+
+    const futureSessionIds = (
+      await prisma.session.findMany({
+        where: { recurrence_group_id: groupId, session_date: { gte: now } },
+        select: { session_id: true },
+      })
+    ).map((s) => s.session_id);
+
+    await prisma.$transaction([
+      prisma.sessionChange.deleteMany({ where: { session_id: { in: futureSessionIds } } }),
+      prisma.session.deleteMany({ where: { session_id: { in: futureSessionIds } } }),
+    ]);
+
+    res.json({ deletedCount: futureSessionIds.length });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Failed to delete recurring schedule' });
   }
 });
 

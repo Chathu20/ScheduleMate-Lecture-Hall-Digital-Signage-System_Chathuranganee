@@ -68,11 +68,14 @@ model DisplayDevice {
 model Admin {
   admin_id      Int      @id @default(autoincrement())
   username      String   @unique
+  email         String?  @unique
   password_hash String
   role          String
   is_active     Boolean  @default(true)
   failed_attempts Int      @default(0)
   locked_until    DateTime?
+  reset_token_hash    String?
+  reset_token_expires DateTime?
   createdSessions Session[] @relation("CreatedBy")
   changes       SessionChange[]
 }
@@ -89,11 +92,21 @@ model Session {
   end_time     DateTime
   status       String   // ACTIVE, CANCELLED, RESCHEDULED
   session_type String   // LECTURE, LAB
+  recurrence_group_id String?
   room         Room     @relation(fields: [room_id], references: [room_id])
   module       Module   @relation(fields: [module_id], references: [module_id])
   lecturer     Lecturer @relation(fields: [lecturer_id], references: [lecturer_id])
   createdByAdmin Admin  @relation("CreatedBy", fields: [created_by], references: [admin_id])
   changes      SessionChange[]
+}
+
+model SignageSettings {
+  id                          Int    @id @default(1)
+  side_duration_seconds       Int    @default(8)
+  poll_interval_seconds       Int    @default(30)
+  upcoming_soon_threshold_min Int    @default(15)
+  max_upcoming_per_slide      Int    @default(5)
+  institution_name            String @default("Sparkline Academy")
 }
 
 model SessionChange {

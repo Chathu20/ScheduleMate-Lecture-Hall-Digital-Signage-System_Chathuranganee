@@ -1,185 +1,362 @@
-import { useEffect, useState, FormEvent } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import type { FormEvent } from 'react';
 import apiClient from '../lib/apiClient';
+import { Modal, NoteBox, ModalActions, ModalError } from '../components/Modal';
+import {
+  colors, pageTitleStyle, primaryBtn, outlineBtn, dangerBtn, inputStyle, labelStyle,
+  tableWrapStyle, thStyle, tdStyle, filterBarStyle, selectStyle, linkBtnStyle, dangerLinkBtnStyle,
+} from '../theme';
 
 interface Building { building_id: number; name: string; }
-interface Floor { floor_id: number; building_id: number; floor_number: number; is_full_lab_floor: boolean; }
+interface Floor { floor_id: number; building_id: number; floor_number: number; }
 interface Side { side_id: number; floor_id: number; side_code: string; }
 interface Room { room_id: number; side_id: number; room_code: string; capacity: number; room_type: string; }
+interface Session { session_id: number; room_id: number; session_date: string; status: string; }
+
+const ROOM_TYPES = ['Lecture', 'Lab', 'Large Hall'];
+
+function emptyRoomForm() {
+  return { building_id: '', floor_id: '', side_id: '', room_code: '', capacity: '', room_type: '' };
+}
 
 export function CampusStructurePage() {
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [floors, setFloors] = useState<Floor[]>([]);
   const [sides, setSides] = useState<Side[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
+  const [sessions, setSessions] = useState<Session[]>([]);
 
-  const [selectedBuilding, setSelectedBuilding] = useState<number | null>(null);
-  const [selectedFloor, setSelectedFloor] = useState<number | null>(null);
-  const [selectedSide, setSelectedSide] = useState<number | null>(null);
+  const [filterBuilding, setFilterBuilding] = useState('');
+  const [filterFloor, setFilterFloor] = useState('');
+  const [filterSide, setFilterSide] = useState('');
 
-  const [newBuildingName, setNewBuildingName] = useState('');
-  const [newFloorNumber, setNewFloorNumber] = useState('');
-  const [newSideCode, setNewSideCode] = useState('');
-  const [newRoomCode, setNewRoomCode] = useState('');
-  const [newRoomCapacity, setNewRoomCapacity] = useState('');
-  const [newRoomType, setNewRoomType] = useState('Lecture');
+  const [addOpen, setAddOpen] = useState(false);
+  const [addForm, setAddForm] = useState(emptyRoomForm());
+  const [addError, setAddError] = useState<string | null>(null);
 
-  const [error, setError] = useState<string | null>(null);
+  const [editRoom, setEditRoom] = useState<Room | null>(null);
+  const [editForm, setEditForm] = useState(emptyRoomForm());
+  const [editError, setEditError] = useState<string | null>(null);
 
-  useEffect(() => { fetchBuildings(); fetchFloors(); fetchSides(); fetchRooms(); }, []);
+  const [deleteRoom, setDeleteRoom] = useState<Room | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  async function fetchBuildings() {
-    const res = await apiClient.get<Building[]>('/buildings');
-    setBuildings(res.data);
+  useEffect(() => { loadAll(); }, []);
+
+  async function loadAll() {
+    const [b, f, s, r, se] = await Promise.all([
+      apiClient.get<Building[]>('/buildings'),
+      apiClient.get<Floor[]>('/floors'),
+      apiClient.get<Side[]>('/sides'),
+      apiClient.get<Room[]>('/rooms'),
+      apiClient.get<Session[]>('/sessions'),
+    ]);
+    setBuildings(b.data);
+    setFloors(f.data);
+    setSides(s.data);
+    setRooms(r.data);
+    setSessions(se.data);
   }
-  async function fetchFloors() {
-    const res = await apiClient.get<Floor[]>('/floors');
-    setFloors(res.data);
+
+  function buildingName(buildingId: number) {
+    return buildings.find((b) => b.building_id === buildingId)?.name || '-';
   }
-  async function fetchSides() {
-    const res = await apiClient.get<Side[]>('/sides');
-    setSides(res.data);
-  }
-  async function fetchRooms() {
-    const res = await apiClient.get<Room[]>('/rooms');
-    setRooms(res.data);
+  function sideOf(sideId: number) { return sides.find((s) => s.side_id === sideId); }
+  function floorOf(floorId: number) { return floors.find((f) => f.floor_id === floorId); }
+
+  function roomLocation(room: Room) {
+    const side = sideOf(room.side_id);
+    const floor = side ? floorOf(side.floor_id) : undefined;
+    return {
+      buildingId: floor?.building_id,
+      floorNumber: floor?.floor_number,
+      sideCode: side?.side_code,
+    };
   }
 
-  const floorsForBuilding = floors.filter((f) => f.building_id === selectedBuilding);
-  const sidesForFloor = sides.filter((s) => s.floor_id === selectedFloor);
-  const roomsForSide = rooms.filter((r) => r.side_id === selectedSide);
+  const filteredRooms = useMemo(() => {
+    return rooms.filter((room) => {
+      const loc = roomLocation(room);
+      if (filterBuilding && String(loc.buildingId) !== filterBuilding) return false;
+      if (filterFloor && String(loc.floorNumber) !== filterFloor) return false;
+      if (filterSide && loc.sideCode !== filterSide) return false;
+      return true;
+    });
+  }, [rooms, sides, floors, filterBuilding, filterFloor, filterSide]);
 
-  async function handleAddBuilding(e: FormEvent) {
+  const floorsForFilterBuilding = floors.filter((f) => !filterBuilding || String(f.building_id) === filterBuilding);
+  const sidesForFilterFloor = sides.filter((s) => {
+    if (!filterFloor) return true;
+    const f = floorOf(s.floor_id);
+    return f && String(f.floor_number) === filterFloor;
+  });
+
+  // --- Add Room form cascading dropdowns ---
+  const floorsForAddBuilding = floors.filter((f) => String(f.building_id) === addForm.building_id);
+  const sidesForAddFloor = sides.filter((s) => String(s.floor_id) === addForm.floor_id);
+  const floorsForEditBuilding = floors.filter((f) => String(f.building_id) === editForm.building_id);
+  const sidesForEditFloor = sides.filter((s) => String(s.floor_id) === editForm.floor_id);
+
+  async function handleAdd(e: FormEvent) {
     e.preventDefault();
-    if (!newBuildingName.trim()) return;
-    try {
-      await apiClient.post('/buildings', { name: newBuildingName });
-      setNewBuildingName('');
-      fetchBuildings();
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to add building');
+    setAddError(null);
+    if (!addForm.side_id || !addForm.room_code.trim() || !addForm.capacity || !addForm.room_type) {
+      setAddError('All fields are required');
+      return;
     }
-  }
-
-  async function handleAddFloor(e: FormEvent) {
-    e.preventDefault();
-    if (!selectedBuilding || !newFloorNumber) return;
-    try {
-      await apiClient.post('/floors', {
-        building_id: selectedBuilding,
-        floor_number: Number(newFloorNumber),
-        is_full_lab_floor: false,
-      });
-      setNewFloorNumber('');
-      fetchFloors();
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to add floor');
-    }
-  }
-
-  async function handleAddSide(e: FormEvent) {
-    e.preventDefault();
-    if (!selectedFloor || !newSideCode.trim()) return;
-    try {
-      await apiClient.post('/sides', { floor_id: selectedFloor, side_code: newSideCode });
-      setNewSideCode('');
-      fetchSides();
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to add side');
-    }
-  }
-
-  async function handleAddRoom(e: FormEvent) {
-    e.preventDefault();
-    if (!selectedSide || !newRoomCode.trim() || !newRoomCapacity) return;
     try {
       await apiClient.post('/rooms', {
-        side_id: selectedSide,
-        room_code: newRoomCode,
-        capacity: Number(newRoomCapacity),
-        room_type: newRoomType,
+        side_id: Number(addForm.side_id),
+        room_code: addForm.room_code.trim(),
+        capacity: Number(addForm.capacity),
+        room_type: addForm.room_type,
       });
-      setNewRoomCode('');
-      setNewRoomCapacity('');
-      fetchRooms();
+      setAddOpen(false);
+      setAddForm(emptyRoomForm());
+      loadAll();
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to add room');
+      setAddError(err.response?.data?.message || 'Failed to add room');
+    }
+  }
+
+  function openEdit(room: Room) {
+    const loc = roomLocation(room);
+    setEditForm({
+      building_id: loc.buildingId ? String(loc.buildingId) : '',
+      floor_id: sideOf(room.side_id)?.floor_id ? String(sideOf(room.side_id)!.floor_id) : '',
+      side_id: String(room.side_id),
+      room_code: room.room_code,
+      capacity: String(room.capacity),
+      room_type: room.room_type,
+    });
+    setEditError(null);
+    setEditRoom(room);
+  }
+
+  async function handleEditSave(e: FormEvent) {
+    e.preventDefault();
+    if (!editRoom) return;
+    setEditError(null);
+    try {
+      await apiClient.put(`/rooms/${editRoom.room_id}`, {
+        room_code: editForm.room_code.trim(),
+        capacity: Number(editForm.capacity),
+        room_type: editForm.room_type,
+      });
+      setEditRoom(null);
+      loadAll();
+    } catch (err: any) {
+      setEditError(err.response?.data?.message || 'Failed to update room');
+    }
+  }
+
+  function upcomingSessionCount(roomId: number) {
+    const now = new Date();
+    const in30 = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    return sessions.filter((s) => {
+      if (s.room_id !== roomId) return false;
+      if (s.status !== 'ACTIVE' && s.status !== 'RESCHEDULED') return false;
+      const d = new Date(s.session_date);
+      return d >= now && d <= in30;
+    }).length;
+  }
+
+  async function handleDelete() {
+    if (!deleteRoom) return;
+    setDeleteError(null);
+    try {
+      await apiClient.delete(`/rooms/${deleteRoom.room_id}`);
+      setDeleteRoom(null);
+      loadAll();
+    } catch (err: any) {
+      setDeleteError(err.response?.data?.message || 'Failed to delete room');
     }
   }
 
   return (
-    <div style={{ padding: 24, fontFamily: 'sans-serif' }}>
-      <h1>Campus Structure</h1>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
+    <div>
+      <h1 style={pageTitleStyle}>Building &amp; Rooms</h1>
 
-      {/* Buildings */}
-      <section style={{ marginBottom: 24 }}>
-        <h2>Buildings</h2>
-        <form onSubmit={handleAddBuilding} style={{ marginBottom: 8 }}>
-          <input value={newBuildingName} onChange={(e) => setNewBuildingName(e.target.value)} placeholder="New building name" />
-          <button type="submit">Add Building</button>
-        </form>
-        <select value={selectedBuilding ?? ''} onChange={(e) => { setSelectedBuilding(Number(e.target.value) || null); setSelectedFloor(null); setSelectedSide(null); }}>
-          <option value="">-- Select a building --</option>
-          {buildings.map((b) => (
-            <option key={b.building_id} value={b.building_id}>{b.name} (ID: {b.building_id})</option>
-          ))}
+      <div style={filterBarStyle}>
+        <span style={{ fontSize: 13, fontWeight: 700, color: colors.textMuted }}>Filter</span>
+        <select style={selectStyle} value={filterBuilding} onChange={(e) => { setFilterBuilding(e.target.value); setFilterFloor(''); setFilterSide(''); }}>
+          <option value="">Building</option>
+          {buildings.map((b) => <option key={b.building_id} value={b.building_id}>{b.name}</option>)}
         </select>
-      </section>
+        <select style={selectStyle} value={filterFloor} onChange={(e) => { setFilterFloor(e.target.value); setFilterSide(''); }}>
+          <option value="">Floor</option>
+          {[...new Set(floorsForFilterBuilding.map((f) => f.floor_number))].map((fn) => <option key={fn} value={fn}>Floor {fn}</option>)}
+        </select>
+        <select style={selectStyle} value={filterSide} onChange={(e) => setFilterSide(e.target.value)}>
+          <option value="">Side</option>
+          {[...new Set(sidesForFilterFloor.map((s) => s.side_code))].map((sc) => <option key={sc} value={sc}>Side {sc}</option>)}
+        </select>
+      </div>
 
-      {/* Floors */}
-      {selectedBuilding && (
-        <section style={{ marginBottom: 24 }}>
-          <h2>Floors</h2>
-          <form onSubmit={handleAddFloor} style={{ marginBottom: 8 }}>
-            <input type="number" value={newFloorNumber} onChange={(e) => setNewFloorNumber(e.target.value)} placeholder="Floor number" />
-            <button type="submit">Add Floor</button>
-          </form>
-          <select value={selectedFloor ?? ''} onChange={(e) => { setSelectedFloor(Number(e.target.value) || null); setSelectedSide(null); }}>
-            <option value="">-- Select a floor --</option>
-            {floorsForBuilding.map((f) => (
-              <option key={f.floor_id} value={f.floor_id}>Floor {f.floor_number} (ID: {f.floor_id})</option>
-            ))}
-          </select>
-        </section>
-      )}
+      <button style={{ ...primaryBtn, marginBottom: 16 }} onClick={() => { setAddForm(emptyRoomForm()); setAddError(null); setAddOpen(true); }}>
+        + Add Room
+      </button>
 
-      {/* Sides */}
-      {selectedFloor && (
-        <section style={{ marginBottom: 24 }}>
-          <h2>Sides</h2>
-          <form onSubmit={handleAddSide} style={{ marginBottom: 8 }}>
-            <input value={newSideCode} onChange={(e) => setNewSideCode(e.target.value)} placeholder="Side code (e.g. A)" />
-            <button type="submit">Add Side</button>
-          </form>
-          <select value={selectedSide ?? ''} onChange={(e) => setSelectedSide(Number(e.target.value) || null)}>
-            <option value="">-- Select a side --</option>
-            {sidesForFloor.map((s) => (
-              <option key={s.side_id} value={s.side_id}>Side {s.side_code} (ID: {s.side_id})</option>
-            ))}
-          </select>
-        </section>
-      )}
+      <div style={tableWrapStyle}>
+        <div style={{ padding: '14px 16px', borderBottom: `1px solid ${colors.border}`, fontWeight: 700, fontSize: 16 }}>
+          Rooms &amp; Labs
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', minWidth: 760, borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                <th style={thStyle}>Room</th>
+                <th style={thStyle}>Building</th>
+                <th style={thStyle}>Floor / Side</th>
+                <th style={thStyle}>Type</th>
+                <th style={thStyle}>Capacity</th>
+                <th style={thStyle}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredRooms.length === 0 && (
+                <tr><td colSpan={6} style={{ ...tdStyle, textAlign: 'center', color: colors.textMuted }}>No rooms found</td></tr>
+              )}
+              {filteredRooms.map((room) => {
+                const loc = roomLocation(room);
+                return (
+                  <tr key={room.room_id}>
+                    <td style={tdStyle}>{room.room_code}</td>
+                    <td style={tdStyle}>{loc.buildingId ? buildingName(loc.buildingId) : '-'}</td>
+                    <td style={tdStyle}>{loc.floorNumber ?? '-'} / {loc.sideCode ?? '-'}</td>
+                    <td style={tdStyle}>{room.room_type}</td>
+                    <td style={tdStyle}>{room.capacity}</td>
+                    <td style={tdStyle}>
+                      <button style={linkBtnStyle} onClick={() => openEdit(room)}>Edit</button>
+                      <button style={dangerLinkBtnStyle} onClick={() => { setDeleteError(null); setDeleteRoom(room); }}>Delete</button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
-      {/* Rooms */}
-      {selectedSide && (
-        <section>
-          <h2>Rooms</h2>
-          <form onSubmit={handleAddRoom} style={{ marginBottom: 8 }}>
-            <input value={newRoomCode} onChange={(e) => setNewRoomCode(e.target.value)} placeholder="Room code (e.g. 12A01)" />
-            <input type="number" value={newRoomCapacity} onChange={(e) => setNewRoomCapacity(e.target.value)} placeholder="Capacity" />
-            <select value={newRoomType} onChange={(e) => setNewRoomType(e.target.value)}>
-              <option value="Lecture">Lecture</option>
-              <option value="Lab">Lab</option>
-              <option value="Large Hall">Large Hall</option>
+      {addOpen && (
+        <Modal title="Add Room" onClose={() => setAddOpen(false)}>
+          <form onSubmit={handleAdd}>
+            <label style={labelStyle}>Building</label>
+            <select
+              style={{ ...inputStyle }}
+              value={addForm.building_id}
+              onChange={(e) => setAddForm({ ...addForm, building_id: e.target.value, floor_id: '', side_id: '' })}
+            >
+              <option value="">Select Building...</option>
+              {buildings.map((b) => <option key={b.building_id} value={b.building_id}>{b.name}</option>)}
             </select>
-            <button type="submit">Add Room</button>
+
+            <label style={labelStyle}>Floor</label>
+            <select
+              style={{ ...inputStyle }}
+              value={addForm.floor_id}
+              onChange={(e) => setAddForm({ ...addForm, floor_id: e.target.value, side_id: '' })}
+              disabled={!addForm.building_id}
+            >
+              <option value="">Select Floor...</option>
+              {floorsForAddBuilding.map((f) => <option key={f.floor_id} value={f.floor_id}>Floor {f.floor_number}</option>)}
+            </select>
+
+            <label style={labelStyle}>Side</label>
+            <select
+              style={{ ...inputStyle }}
+              value={addForm.side_id}
+              onChange={(e) => setAddForm({ ...addForm, side_id: e.target.value })}
+              disabled={!addForm.floor_id}
+            >
+              <option value="">Select Side...</option>
+              {sidesForAddFloor.map((s) => <option key={s.side_id} value={s.side_id}>{s.side_code} Side</option>)}
+            </select>
+
+            <div style={{ display: 'flex', gap: 12 }}>
+              <div style={{ flex: 1 }}>
+                <label style={labelStyle}>Room Code</label>
+                <input style={inputStyle} value={addForm.room_code} onChange={(e) => setAddForm({ ...addForm, room_code: e.target.value })} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={labelStyle}>Capacity</label>
+                <input type="number" style={inputStyle} value={addForm.capacity} onChange={(e) => setAddForm({ ...addForm, capacity: e.target.value })} />
+              </div>
+            </div>
+
+            <label style={labelStyle}>Room Type</label>
+            <select style={inputStyle} value={addForm.room_type} onChange={(e) => setAddForm({ ...addForm, room_type: e.target.value })}>
+              <option value="">Select Room Type...</option>
+              {ROOM_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+
+            <ModalError>{addError}</ModalError>
+            <ModalActions>
+              <button type="submit" style={primaryBtn}>Save</button>
+              <button type="button" style={outlineBtn} onClick={() => setAddOpen(false)}>Cancel</button>
+            </ModalActions>
           </form>
-          <ul>
-            {roomsForSide.map((r) => (
-              <li key={r.room_id}>{r.room_code} — capacity {r.capacity} ({r.room_type})</li>
-            ))}
-          </ul>
-        </section>
+        </Modal>
+      )}
+
+      {editRoom && (
+        <Modal title="Edit Room" onClose={() => setEditRoom(null)}>
+          <form onSubmit={handleEditSave}>
+            <label style={labelStyle}>Building</label>
+            <select style={inputStyle} value={editForm.building_id} onChange={(e) => setEditForm({ ...editForm, building_id: e.target.value, floor_id: '', side_id: '' })}>
+              {buildings.map((b) => <option key={b.building_id} value={b.building_id}>{b.name}</option>)}
+            </select>
+
+            <label style={labelStyle}>Floor</label>
+            <select style={inputStyle} value={editForm.floor_id} onChange={(e) => setEditForm({ ...editForm, floor_id: e.target.value, side_id: '' })}>
+              {floorsForEditBuilding.map((f) => <option key={f.floor_id} value={f.floor_id}>Floor {f.floor_number}</option>)}
+            </select>
+
+            <label style={labelStyle}>Side</label>
+            <select style={inputStyle} value={editForm.side_id} onChange={(e) => setEditForm({ ...editForm, side_id: e.target.value })}>
+              {sidesForEditFloor.map((s) => <option key={s.side_id} value={s.side_id}>{s.side_code} Side</option>)}
+            </select>
+
+            <div style={{ display: 'flex', gap: 12 }}>
+              <div style={{ flex: 1 }}>
+                <label style={labelStyle}>Room Code</label>
+                <input style={inputStyle} value={editForm.room_code} onChange={(e) => setEditForm({ ...editForm, room_code: e.target.value })} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={labelStyle}>Capacity</label>
+                <input type="number" style={inputStyle} value={editForm.capacity} onChange={(e) => setEditForm({ ...editForm, capacity: e.target.value })} />
+              </div>
+            </div>
+
+            <label style={labelStyle}>Room Type</label>
+            <select style={inputStyle} value={editForm.room_type} onChange={(e) => setEditForm({ ...editForm, room_type: e.target.value })}>
+              {ROOM_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+
+            <ModalError>{editError}</ModalError>
+            <ModalActions>
+              <button type="submit" style={primaryBtn}>Save Changes</button>
+              <button type="button" style={outlineBtn} onClick={() => setEditRoom(null)}>Cancel</button>
+            </ModalActions>
+          </form>
+        </Modal>
+      )}
+
+      {deleteRoom && (
+        <Modal title="Delete Room" headerColor={colors.modalRed} onClose={() => setDeleteRoom(null)}>
+          <p style={{ marginTop: 0 }}>Delete "{deleteRoom.room_code}"? This cannot be undone.</p>
+          {upcomingSessionCount(deleteRoom.room_id) > 0 && (
+            <NoteBox>
+              This room has {upcomingSessionCount(deleteRoom.room_id)} session(s) scheduled in the next 30 days.<br />
+              Deleting it will also remove those sessions.
+            </NoteBox>
+          )}
+          <ModalError>{deleteError}</ModalError>
+          <ModalActions>
+            <button style={dangerBtn} onClick={handleDelete}>Delete</button>
+            <button style={outlineBtn} onClick={() => setDeleteRoom(null)}>Cancel</button>
+          </ModalActions>
+        </Modal>
       )}
     </div>
   );

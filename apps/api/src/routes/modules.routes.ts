@@ -60,4 +60,25 @@ router.put('/:id', async (req, res) => {
   }
 });
 
+// DELETE a module, along with any sessions that reference it
+router.delete('/:id', async (req, res) => {
+  const moduleId = Number(req.params.id);
+  try {
+    const sessionIds = (
+      await prisma.session.findMany({ where: { module_id: moduleId }, select: { session_id: true } })
+    ).map((s) => s.session_id);
+
+    await prisma.$transaction([
+      prisma.sessionChange.deleteMany({ where: { session_id: { in: sessionIds } } }),
+      prisma.session.deleteMany({ where: { module_id: moduleId } }),
+      prisma.module.delete({ where: { module_id: moduleId } }),
+    ]);
+
+    res.status(204).send();
+  } catch (error) {
+    console.error(error);
+    res.status(404).json({ message: 'Module not found' });
+  }
+});
+
 export default router;

@@ -12,7 +12,7 @@ router.use(requireRole('SUPER_ADMIN'));
 router.get('/', async (req, res) => {
   try {
     const admins = await prisma.admin.findMany({
-      select: { admin_id: true, username: true, role: true, locked_until: true },
+      select: { admin_id: true, username: true, email: true, role: true, is_active: true, locked_until: true },
     });
     res.json(admins);
   } catch (error) {
@@ -24,37 +24,40 @@ router.get('/', async (req, res) => {
 // CREATE a new admin
 router.post('/', async (req, res) => {
   try {
-    const { username, password, role } = req.body;
+    const { username, email, password, role } = req.body;
     if (!username || !password || !role) {
       return res.status(400).json({ message: 'username, password, and role are required' });
     }
 
     const password_hash = await bcrypt.hash(password, 10);
     const admin = await prisma.admin.create({
-      data: { username, password_hash, role },
-      select: { admin_id: true, username: true, role: true },
+      data: { username, email: email || null, password_hash, role },
+      select: { admin_id: true, username: true, email: true, role: true },
     });
     res.status(201).json(admin);
   } catch (error: any) {
     if (error.code === 'P2002') {
-      return res.status(409).json({ message: 'username already exists' });
+      return res.status(409).json({ message: 'username or email already exists' });
     }
     console.error(error);
     res.status(500).json({ message: 'Failed to create admin' });
   }
 });
 
-// EDIT another admin (username/role — password reset handled separately later)
+// EDIT another admin (username/email/role — password reset handled separately)
 router.put('/:id', async (req, res) => {
   try {
-    const { username, role } = req.body;
+    const { username, email, role } = req.body;
     const admin = await prisma.admin.update({
       where: { admin_id: Number(req.params.id) },
-      data: { username, role },
-      select: { admin_id: true, username: true, role: true },
+      data: { username, email, role },
+      select: { admin_id: true, username: true, email: true, role: true },
     });
     res.json(admin);
-  } catch (error) {
+  } catch (error: any) {
+    if (error.code === 'P2002') {
+      return res.status(409).json({ message: 'username or email already exists' });
+    }
     console.error(error);
     res.status(404).json({ message: 'Admin not found' });
   }

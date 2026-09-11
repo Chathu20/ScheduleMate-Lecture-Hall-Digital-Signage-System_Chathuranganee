@@ -14,6 +14,7 @@ import roomsRoutes from "./routes/rooms.routes";
 import profileRoutes from "./routes/profile.routes";
 import signageRoutes from './routes/signage.routes';
 import dashboardRoutes from './routes/dashboard.routes';
+import signageSettingsRoutes from './routes/signageSettings.routes';
 
 const app = express();
 
@@ -37,5 +38,6 @@ app.use("/api/rooms", roomsRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/signage', signageRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/signage-settings', signageSettingsRoutes);
 
 export default app;

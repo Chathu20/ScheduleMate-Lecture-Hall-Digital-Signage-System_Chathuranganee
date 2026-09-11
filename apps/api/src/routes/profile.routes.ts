@@ -9,18 +9,19 @@ router.use(authMiddleware);
 router.get('/', async (req: AuthenticatedRequest, res) => {
   const admin = await prisma.admin.findUnique({
     where: { admin_id: req.admin!.admin_id },
-    select: { admin_id: true, username: true, role: true, is_active: true },
+    select: { admin_id: true, username: true, email: true, role: true, is_active: true },
   });
   res.json(admin);
 });
 
 router.put('/', async (req: AuthenticatedRequest, res) => {
-  const { username, currentPassword, newPassword } = req.body;
+  const { username, email, currentPassword, newPassword } = req.body;
   const admin = await prisma.admin.findUnique({ where: { admin_id: req.admin!.admin_id } });
   if (!admin) return res.status(404).json({ message: 'Admin not found' });
 
   const data: any = {};
   if (username) data.username = username;
+  if (email !== undefined) data.email = email;
 
   if (newPassword) {
     if (!currentPassword) {
@@ -37,11 +38,11 @@ router.put('/', async (req: AuthenticatedRequest, res) => {
     const updated = await prisma.admin.update({
       where: { admin_id: admin.admin_id },
       data,
-      select: { admin_id: true, username: true, role: true },
+      select: { admin_id: true, username: true, email: true, role: true },
     });
     res.json(updated);
   } catch (error: any) {
-    if (error.code === 'P2002') return res.status(409).json({ message: 'username already exists' });
+    if (error.code === 'P2002') return res.status(409).json({ message: 'username or email already exists' });
     res.status(500).json({ message: 'Failed to update profile' });
   }
 });
