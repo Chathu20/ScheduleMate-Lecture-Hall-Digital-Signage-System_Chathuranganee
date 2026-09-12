@@ -5,6 +5,7 @@ import {
   authMiddleware,
   AuthenticatedRequest,
 } from '../middleware/auth.middleware';
+import { getFloatingNow } from '../lib/time';
 
 const RECURRING_WEEKLY_OCCURRENCES = 12;
 
@@ -574,7 +575,7 @@ router.delete('/:id', async (req, res) => {
 router.delete('/recurring/:groupId', async (req, res) => {
   try {
     const groupId = req.params.groupId;
-    const now = new Date();
+    const now = getFloatingNow();
 
     const futureSessionIds = (
       await prisma.session.findMany({

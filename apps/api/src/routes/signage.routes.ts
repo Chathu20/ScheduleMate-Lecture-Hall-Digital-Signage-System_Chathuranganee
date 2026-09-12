@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma';
+import { getFloatingNow } from '../lib/time';
 
 const router = Router();
 
@@ -38,7 +39,9 @@ const SETTINGS_DEFAULTS = {
 router.get('/:side_id', async (req, res) => {
   try {
     const sideId = Number(req.params.side_id);
-    const now = new Date();
+    // Use the same floating-time frame session times are stored in (see
+    // lib/time.ts) so "ongoing" vs "upcoming" lines up with the wall clock.
+    const now = getFloatingNow();
 
     const [side, settings] = await Promise.all([
       prisma.side.findUnique({

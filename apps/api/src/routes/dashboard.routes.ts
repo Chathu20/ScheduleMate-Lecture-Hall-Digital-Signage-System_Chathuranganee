@@ -1,13 +1,16 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma';
 import { authMiddleware } from '../middleware/auth.middleware';
+import { getFloatingNow } from '../lib/time';
 
 const router = Router();
 router.use(authMiddleware);
 
 router.get('/', async (req, res) => {
   try {
-    const now = new Date();
+    // Use the same floating-time frame session times are stored in (see
+    // lib/time.ts) so "ongoing" vs "upcoming" lines up with the wall clock.
+    const now = getFloatingNow();
     const todayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
     const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
 

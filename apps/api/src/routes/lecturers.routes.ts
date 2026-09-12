@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma';
 import { authMiddleware } from '../middleware/auth.middleware';
+import { getFloatingNow } from '../lib/time';
 
 const router = Router();
 router.use(authMiddleware);
@@ -68,7 +69,7 @@ router.delete('/:id', async (req, res) => {
       where: {
         lecturer_id: lecturerId,
         status: { in: ['ACTIVE', 'RESCHEDULED'] },
-        session_date: { gte: new Date() },
+        session_date: { gte: getFloatingNow() },
       },
     });
 
