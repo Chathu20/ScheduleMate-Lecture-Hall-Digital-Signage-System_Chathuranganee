@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import apiClient from '../lib/apiClient';
 import { Modal, NoteBox, ModalActions, ModalError } from '../components/Modal';
+import { IconEdit, IconDelete, IconDeactivate, IconReactivate } from '../components/icons';
 import {
   colors, pageTitleStyle, primaryBtn, outlineBtn, dangerBtn, amberBtn, greenBtn, inputStyle, labelStyle,
   tableWrapStyle, thStyle, tdStyle, linkBtnStyle, dangerLinkBtnStyle, statusPillStyle,
@@ -182,13 +183,13 @@ export function DisplaysPage() {
                   <td style={tdStyle}><span style={statusPillStyle(d.status)}>{d.status}</span></td>
                   <td style={tdStyle}><span style={statusPillStyle(d.is_active ? 'ACTIVE' : 'INACTIVE')}>{d.is_active ? 'ACTIVE' : 'INACTIVE'}</span></td>
                   <td style={tdStyle}>
-                    <button style={linkBtnStyle} onClick={() => openEdit(d)}>Edit</button>
+                    <button style={linkBtnStyle} onClick={() => openEdit(d)}><IconEdit /> Edit</button>
                     {d.is_active ? (
-                      <button style={dangerLinkBtnStyle} onClick={() => { setDeactivateError(null); setDeactivateDisplay(d); }}>Deactivate</button>
+                      <button style={dangerLinkBtnStyle} onClick={() => { setDeactivateError(null); setDeactivateDisplay(d); }}><IconDeactivate /> Deactivate</button>
                     ) : (
-                      <button style={linkBtnStyle} onClick={() => { setReactivateError(null); setReactivateDisplay(d); }}>Reactivate</button>
+                      <button style={linkBtnStyle} onClick={() => { setReactivateError(null); setReactivateDisplay(d); }}><IconReactivate /> Reactivate</button>
                     )}
-                    <button style={dangerLinkBtnStyle} onClick={() => { setDeleteError(null); setDeleteDisplay(d); }}>Delete</button>
+                    <button style={dangerLinkBtnStyle} onClick={() => { setDeleteError(null); setDeleteDisplay(d); }}><IconDelete /> Delete</button>
                   </td>
                 </tr>
               );

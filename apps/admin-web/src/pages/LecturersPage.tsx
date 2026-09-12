@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import apiClient from '../lib/apiClient';
+import { getFloatingNow } from '../lib/time';
 import { Modal, NoteBox, ModalActions, ModalError } from '../components/Modal';
+import { IconEdit, IconDelete } from '../components/icons';
 import {
   colors, pageTitleStyle, primaryBtn, outlineBtn, dangerBtn, inputStyle, labelStyle,
   tableWrapStyle, thStyle, tdStyle, linkBtnStyle, dangerLinkBtnStyle,
@@ -39,7 +41,7 @@ export function LecturersPage() {
   }
 
   function upcomingCount(lecturerId: number) {
-    const now = new Date();
+    const now = getFloatingNow();
     return sessions.filter((s) =>
       s.lecturer_id === lecturerId &&
       (s.status === 'ACTIVE' || s.status === 'RESCHEDULED') &&
@@ -123,8 +125,8 @@ export function LecturersPage() {
                 <td style={tdStyle}>{l.full_name}</td>
                 <td style={tdStyle}>{l.email}</td>
                 <td style={tdStyle}>
-                  <button style={linkBtnStyle} onClick={() => openEdit(l)}>Edit</button>
-                  <button style={dangerLinkBtnStyle} onClick={() => { setDeleteError(null); setDeleteLecturer(l); }}>Delete</button>
+                  <button style={linkBtnStyle} onClick={() => openEdit(l)}><IconEdit /> Edit</button>
+                  <button style={dangerLinkBtnStyle} onClick={() => { setDeleteError(null); setDeleteLecturer(l); }}><IconDelete /> Delete</button>
                 </td>
               </tr>
             ))}

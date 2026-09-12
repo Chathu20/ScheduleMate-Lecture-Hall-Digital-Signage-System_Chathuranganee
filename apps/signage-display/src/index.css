@@ -69,11 +69,11 @@ body {
 }
 
 .status-bar--ongoing {
-  background: #1fae74;
+  background: #5b4fd6;
 }
 
 .status-bar--upcoming {
-  background: #e2911f;
+  background: #1fae74;
 }
 
 .status-bar--cancelled {
@@ -81,7 +81,7 @@ body {
 }
 
 .status-bar--rescheduled {
-  background: #5b4fd6;
+  background: #e2911f;
 }
 
 /* ===================== CONNECTION WARNING ===================== */
@@ -132,11 +132,11 @@ body {
 }
 
 .session-card--ongoing::after {
-  background: #1fae74;
+  background: #5b4fd6;
 }
 
 .session-card--upcoming::after {
-  background: #e2911f;
+  background: #1fae74;
 }
 
 .session-card--cancelled::after {
@@ -144,7 +144,7 @@ body {
 }
 
 .session-card--rescheduled::after {
-  background: #5b4fd6;
+  background: #e2911f;
 }
 
 .session-card-kicker {
@@ -215,11 +215,11 @@ body {
 }
 
 .session-badge--ongoing {
-  background: #1fae74;
+  background: #5b4fd6;
 }
 
 .session-badge--upcoming {
-  background: #e2911f;
+  background: #1fae74;
 }
 
 .session-badge--cancelled {
@@ -227,7 +227,7 @@ body {
 }
 
 .session-badge--rescheduled {
-  background: #5b4fd6;
+  background: #e2911f;
 }
 
 .session-card-reason {
@@ -288,11 +288,11 @@ body {
 }
 
 .dot--ongoing {
-  background: #2fd28c;
+  background: #5b4fd6;
 }
 
 .dot--upcoming {
-  background: #f0a63d;
+  background: #2fd28c;
 }
 
 .dot--finished {
@@ -327,11 +327,11 @@ body {
 }
 
 .slide-dot--active.slide-dot--ongoing {
-  background: #2fd28c;
+  background: #5b4fd6;
 }
 
 .slide-dot--active.slide-dot--upcoming {
-  background: #f0a63d;
+  background: #2fd28c;
 }
 
 .slide-dot--active.slide-dot--cancelled {
@@ -339,7 +339,7 @@ body {
 }
 
 .slide-dot--active.slide-dot--rescheduled {
-  background: #7b70e8;
+  background: #f0a63d;
 }
 
 .slide-legend {

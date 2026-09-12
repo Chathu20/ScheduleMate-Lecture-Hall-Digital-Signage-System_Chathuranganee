@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import apiClient from '../lib/apiClient';
+import { getFloatingNow } from '../lib/time';
 import { Modal, NoteBox, ModalActions, ModalError } from '../components/Modal';
+import { IconEdit, IconDelete, IconCancel, IconReschedule } from '../components/icons';
 import {
   colors, pageTitleStyle, primaryBtn, outlineBtn, dangerBtn, inputStyle, labelStyle,
   tableWrapStyle, thStyle, tdStyle, filterBarStyle, selectStyle, linkBtnStyle, dangerLinkBtnStyle,
@@ -63,7 +65,7 @@ function effectiveSlot(session: Session) {
 
 function effectiveStatusLabel(session: Session) {
   if (session.status === 'CANCELLED') return 'CANCELLED';
-  const now = new Date();
+  const now = getFloatingNow();
   const eff = effectiveSlot(session);
   const start = new Date(eff.start_time);
   const end = new Date(eff.end_time);
@@ -75,7 +77,7 @@ function effectiveStatusLabel(session: Session) {
 
 function isOngoingNow(session: Session) {
   if (session.status === 'CANCELLED') return false;
-  const now = new Date();
+  const now = getFloatingNow();
   const eff = effectiveSlot(session);
   return new Date(eff.start_time) <= now && now < new Date(eff.end_time);
 }
@@ -327,7 +329,7 @@ export function SessionsPage() {
 
   function futureRecurringCount(session: Session) {
     if (!session.recurrence_group_id) return 0;
-    const now = new Date();
+    const now = getFloatingNow();
     return sessions.filter((s) => s.recurrence_group_id === session.recurrence_group_id && new Date(s.session_date) >= now).length;
   }
 
@@ -412,11 +414,11 @@ export function SessionsPage() {
                     <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{fmtTime(eff.start_time)} - {fmtTime(eff.end_time)}</td>
                     <td style={tdStyle}><span style={statusPillStyle(statusLabel)}>{statusLabel}</span></td>
                     <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
-                      {canEditCancel && <button style={linkBtnStyle} onClick={() => openEdit(session)}>Edit</button>}
-                      {canReschedule && <button style={linkBtnStyle} onClick={() => openReschedule(session)}>Reschedule</button>}
-                      {canEditCancel && <button style={linkBtnStyle} onClick={() => { setCancelError(null); setCancelReason(''); setCancelSession(session); }}>Cancel</button>}
-                      {canDeleteSession && <button style={dangerLinkBtnStyle} onClick={() => { setDeleteError(null); setDeleteSession(session); }}>Delete Session</button>}
-                      {canDeleteRecurring && <button style={dangerLinkBtnStyle} onClick={() => { setDeleteRecurringError(null); setDeleteRecurring(session); }}>Delete Recurring Schedule</button>}
+                      {canEditCancel && <button style={linkBtnStyle} onClick={() => openEdit(session)}><IconEdit /> Edit</button>}
+                      {canReschedule && <button style={linkBtnStyle} onClick={() => openReschedule(session)}><IconReschedule /> Reschedule</button>}
+                      {canEditCancel && <button style={linkBtnStyle} onClick={() => { setCancelError(null); setCancelReason(''); setCancelSession(session); }}><IconCancel /> Cancel</button>}
+                      {canDeleteSession && <button style={dangerLinkBtnStyle} onClick={() => { setDeleteError(null); setDeleteSession(session); }}><IconDelete /> Delete Session</button>}
+                      {canDeleteRecurring && <button style={dangerLinkBtnStyle} onClick={() => { setDeleteRecurringError(null); setDeleteRecurring(session); }}><IconDelete /> Delete Recurring Schedule</button>}
                     </td>
                   </tr>
                 );

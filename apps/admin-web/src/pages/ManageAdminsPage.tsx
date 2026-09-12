@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import apiClient from '../lib/apiClient';
 import { Modal, NoteBox, ModalActions, ModalError } from '../components/Modal';
+import { IconEdit, IconDelete, IconDeactivate, IconReactivate } from '../components/icons';
 import {
   colors, pageTitleStyle, primaryBtn, outlineBtn, dangerBtn, amberBtn, greenBtn, inputStyle, labelStyle,
   tableWrapStyle, thStyle, tdStyle, linkBtnStyle, dangerLinkBtnStyle, statusPillStyle,
@@ -148,13 +149,13 @@ export function ManageAdminsPage() {
                 <td style={tdStyle}>{ROLE_LABELS[a.role] || a.role}</td>
                 <td style={tdStyle}><span style={statusPillStyle(a.is_active ? 'ACTIVE' : 'INACTIVE')}>{a.is_active ? 'ACTIVE' : 'INACTIVE'}</span></td>
                 <td style={tdStyle}>
-                  <button style={linkBtnStyle} onClick={() => openEdit(a)}>Edit</button>
+                  <button style={linkBtnStyle} onClick={() => openEdit(a)}><IconEdit /> Edit</button>
                   {a.is_active ? (
-                    <button style={dangerLinkBtnStyle} onClick={() => { setDeactivateError(null); setDeactivateAdmin(a); }}>Deactivate</button>
+                    <button style={dangerLinkBtnStyle} onClick={() => { setDeactivateError(null); setDeactivateAdmin(a); }}><IconDeactivate /> Deactivate</button>
                   ) : (
-                    <button style={linkBtnStyle} onClick={() => { setReactivateError(null); setReactivateAdmin(a); }}>Reactivate</button>
+                    <button style={linkBtnStyle} onClick={() => { setReactivateError(null); setReactivateAdmin(a); }}><IconReactivate /> Reactivate</button>
                   )}
-                  <button style={dangerLinkBtnStyle} onClick={() => { setDeleteError(null); setDeleteAdmin(a); }}>Delete</button>
+                  <button style={dangerLinkBtnStyle} onClick={() => { setDeleteError(null); setDeleteAdmin(a); }}><IconDelete /> Delete</button>
                 </td>
               </tr>
             ))}

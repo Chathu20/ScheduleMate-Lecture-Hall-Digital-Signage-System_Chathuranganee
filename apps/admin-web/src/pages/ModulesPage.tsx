@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import apiClient from '../lib/apiClient';
 import { Modal, NoteBox, ModalActions, ModalError } from '../components/Modal';
+import { IconEdit, IconDelete } from '../components/icons';
 import {
   colors, pageTitleStyle, primaryBtn, outlineBtn, dangerBtn, inputStyle, labelStyle,
   tableWrapStyle, thStyle, tdStyle, linkBtnStyle, dangerLinkBtnStyle,
@@ -118,8 +119,8 @@ export function ModulesPage() {
                 <td style={tdStyle}>{m.module_code}</td>
                 <td style={tdStyle}>{m.module_name}</td>
                 <td style={tdStyle}>
-                  <button style={linkBtnStyle} onClick={() => openEdit(m)}>Edit</button>
-                  <button style={dangerLinkBtnStyle} onClick={() => { setDeleteError(null); setDeleteModule(m); }}>Delete</button>
+                  <button style={linkBtnStyle} onClick={() => openEdit(m)}><IconEdit /> Edit</button>
+                  <button style={dangerLinkBtnStyle} onClick={() => { setDeleteError(null); setDeleteModule(m); }}><IconDelete /> Delete</button>
                 </td>
               </tr>
             ))}

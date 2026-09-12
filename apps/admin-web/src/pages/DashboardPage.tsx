@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import apiClient from '../lib/apiClient';
+import { getFloatingNow } from '../lib/time';
 import { colors, pageTitleStyle, thStyle, tdStyle, statusPillStyle } from '../theme';
 
 interface DashboardCounts {
@@ -38,7 +39,7 @@ const CARD_THEMES = {
 
 function getStatusLabel(session: Session) {
   if (session.status !== 'ACTIVE') return session.status;
-  const now = new Date();
+  const now = getFloatingNow();
   const start = new Date(session.start_time);
   const end = new Date(session.end_time);
   if (start <= now && now < end) return 'ONGOING';
@@ -107,7 +108,7 @@ const cardPanelStyle = {
 };
 
 function getMondayOfWeek(): Date {
-  const now = new Date();
+  const now = getFloatingNow();
   const day = now.getUTCDay(); // 0=Sun..6=Sat
   const diffToMonday = (day === 0 ? -6 : 1) - day;
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + diffToMonday));
@@ -124,7 +125,7 @@ function WeeklyChart({ sessions }: { sessions: Session[] }) {
     });
     const counts = days.map((day) => sessions.filter((s) => s.session_date.slice(0, 10) === day).length);
     const max = Math.max(1, ...counts);
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = getFloatingNow().toISOString().slice(0, 10);
     return { points: counts, maxValue: max, todayIndex: days.indexOf(todayStr) };
   }, [sessions]);
 
@@ -283,9 +284,9 @@ export function DashboardPage() {
         setCounts(countsRes.data);
         setSessions(sessionsRes.data);
 
-        // Session dates are UTC-stamped wall-clock values (see the backend's
-        // Date.UTC-based day boundaries), so "today" must be compared in UTC too.
-        const todayUtc = new Date().toISOString().slice(0, 10);
+        // Session dates are floating wall-clock values (see lib/time.ts), so
+        // "today" must be computed the same way, not from the real UTC clock.
+        const todayUtc = getFloatingNow().toISOString().slice(0, 10);
         const filteredSessions = sessionsRes.data
           .filter((session) => session.session_date.slice(0, 10) === todayUtc)
           .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());

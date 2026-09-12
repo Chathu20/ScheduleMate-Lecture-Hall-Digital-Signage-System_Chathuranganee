@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import apiClient from '../lib/apiClient';
+import { getFloatingNow } from '../lib/time';
 import { Modal, NoteBox, ModalActions, ModalError } from '../components/Modal';
+import { IconEdit, IconDelete } from '../components/icons';
 import {
   colors, pageTitleStyle, primaryBtn, outlineBtn, dangerBtn, inputStyle, labelStyle,
   tableWrapStyle, thStyle, tdStyle, filterBarStyle, selectStyle, linkBtnStyle, dangerLinkBtnStyle,
@@ -151,7 +153,7 @@ export function CampusStructurePage() {
   }
 
   function upcomingSessionCount(roomId: number) {
-    const now = new Date();
+    const now = getFloatingNow();
     const in30 = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
     return sessions.filter((s) => {
       if (s.room_id !== roomId) return false;
@@ -227,8 +229,8 @@ export function CampusStructurePage() {
                     <td style={tdStyle}>{room.room_type}</td>
                     <td style={tdStyle}>{room.capacity}</td>
                     <td style={tdStyle}>
-                      <button style={linkBtnStyle} onClick={() => openEdit(room)}>Edit</button>
-                      <button style={dangerLinkBtnStyle} onClick={() => { setDeleteError(null); setDeleteRoom(room); }}>Delete</button>
+                      <button style={linkBtnStyle} onClick={() => openEdit(room)}><IconEdit /> Edit</button>
+                      <button style={dangerLinkBtnStyle} onClick={() => { setDeleteError(null); setDeleteRoom(room); }}><IconDelete /> Delete</button>
                     </td>
                   </tr>
                 );

@@ -98,6 +98,7 @@ export const selectStyle = {
 export const linkBtnStyle = {
   color: colors.linkBlue, background: 'none', border: 'none', cursor: 'pointer',
   fontSize: 13, fontWeight: 600, padding: 0, marginRight: 12, fontFamily: fonts.base,
+  display: 'inline-flex' as const, alignItems: 'center' as const, gap: 4, verticalAlign: 'middle' as const,
 };
 
 export const dangerLinkBtnStyle = { ...linkBtnStyle, color: colors.danger };
