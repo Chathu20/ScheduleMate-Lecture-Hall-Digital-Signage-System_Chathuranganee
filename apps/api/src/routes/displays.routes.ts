@@ -75,4 +75,32 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// Take a display out of service without deleting its configuration —
+// the signage feed refuses to serve an inactive display's screen
+router.patch('/:id/deactivate', async (req, res) => {
+  try {
+    const display = await prisma.displayDevice.update({
+      where: { display_id: Number(req.params.id) },
+      data: { is_active: false },
+    });
+    res.json(display);
+  } catch (error) {
+    console.error(error);
+    res.status(404).json({ message: 'Display device not found' });
+  }
+});
+
+router.patch('/:id/reactivate', async (req, res) => {
+  try {
+    const display = await prisma.displayDevice.update({
+      where: { display_id: Number(req.params.id) },
+      data: { is_active: true },
+    });
+    res.json(display);
+  } catch (error) {
+    console.error(error);
+    res.status(404).json({ message: 'Display device not found' });
+  }
+});
+
 export default router;

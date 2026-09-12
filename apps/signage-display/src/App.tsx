@@ -145,6 +145,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState(false);
   const [notFound, setNotFound] = useState(false);
+  const [inactive, setInactive] = useState(false);
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [now, setNow] = useState(new Date());
 
@@ -156,6 +157,16 @@ function App() {
       const response = await fetch(`${API_BASE}/${sideId}`);
       if (response.status === 404) {
         setNotFound(true);
+        setInactive(false);
+        setLoading(false);
+        return;
+      }
+      if (response.status === 403) {
+        // The display was deactivated from the admin console — stop showing
+        // any previously-cached schedule until it's reactivated.
+        setInactive(true);
+        setNotFound(false);
+        setData(null);
         setLoading(false);
         return;
       }
@@ -165,6 +176,7 @@ function App() {
       setData(result);
       setApiError(false);
       setNotFound(false);
+      setInactive(false);
       setLoading(false);
     } catch (error) {
       console.error("Signage API error:", error);
@@ -213,6 +225,16 @@ function App() {
         <div className="loading-badge loading-badge--error">!</div>
         <h1>Display Not Configured</h1>
         <p>No location found for side #{sideId}. Check the display's configuration.</p>
+      </div>
+    );
+  }
+
+  if (inactive) {
+    return (
+      <div className="signage-root signage-root--loading">
+        <div className="loading-badge loading-badge--inactive">&#9209;</div>
+        <h1>Display Inactive</h1>
+        <p>This display has been deactivated from the admin console.</p>
       </div>
     );
   }

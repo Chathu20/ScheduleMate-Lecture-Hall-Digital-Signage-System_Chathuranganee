@@ -383,3 +383,7 @@ body {
 .loading-badge--error {
   background: #c0392b;
 }
+
+.loading-badge--inactive {
+  background: #5b6b85;
+}

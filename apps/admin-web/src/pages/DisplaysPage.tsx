@@ -3,14 +3,14 @@ import type { FormEvent } from 'react';
 import apiClient from '../lib/apiClient';
 import { Modal, NoteBox, ModalActions, ModalError } from '../components/Modal';
 import {
-  colors, pageTitleStyle, primaryBtn, outlineBtn, dangerBtn, inputStyle, labelStyle,
+  colors, pageTitleStyle, primaryBtn, outlineBtn, dangerBtn, amberBtn, greenBtn, inputStyle, labelStyle,
   tableWrapStyle, thStyle, tdStyle, linkBtnStyle, dangerLinkBtnStyle, statusPillStyle,
 } from '../theme';
 
 interface Building { building_id: number; name: string; }
 interface Floor { floor_id: number; building_id: number; floor_number: number; }
 interface Side { side_id: number; floor_id: number; side_code: string; }
-interface Display { display_id: number; device_name: string; side_id: number; status: string; }
+interface Display { display_id: number; device_name: string; side_id: number; status: string; is_active: boolean; }
 
 function emptyForm() { return { device_name: '', building_id: '', floor_id: '', side_id: '' }; }
 
@@ -30,6 +30,12 @@ export function DisplaysPage() {
 
   const [deleteDisplay, setDeleteDisplay] = useState<Display | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const [deactivateDisplay, setDeactivateDisplay] = useState<Display | null>(null);
+  const [deactivateError, setDeactivateError] = useState<string | null>(null);
+
+  const [reactivateDisplay, setReactivateDisplay] = useState<Display | null>(null);
+  const [reactivateError, setReactivateError] = useState<string | null>(null);
 
   useEffect(() => { loadAll(); }, []);
 
@@ -118,6 +124,30 @@ export function DisplaysPage() {
     }
   }
 
+  async function handleDeactivate() {
+    if (!deactivateDisplay) return;
+    setDeactivateError(null);
+    try {
+      await apiClient.patch(`/displays/${deactivateDisplay.display_id}/deactivate`);
+      setDeactivateDisplay(null);
+      loadAll();
+    } catch (err: any) {
+      setDeactivateError(err.response?.data?.message || 'Failed to deactivate display');
+    }
+  }
+
+  async function handleReactivate() {
+    if (!reactivateDisplay) return;
+    setReactivateError(null);
+    try {
+      await apiClient.patch(`/displays/${reactivateDisplay.display_id}/reactivate`);
+      setReactivateDisplay(null);
+      loadAll();
+    } catch (err: any) {
+      setReactivateError(err.response?.data?.message || 'Failed to reactivate display');
+    }
+  }
+
   return (
     <div>
       <h1 style={pageTitleStyle}>Display Devices</h1>
@@ -133,13 +163,14 @@ export function DisplaysPage() {
               <th style={thStyle}>Device Name</th>
               <th style={thStyle}>Building</th>
               <th style={thStyle}>Floor / Side</th>
-              <th style={thStyle}>Status</th>
+              <th style={thStyle}>Connection</th>
+              <th style={thStyle}>Active</th>
               <th style={thStyle}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {displays.length === 0 && (
-              <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', color: colors.textMuted }}>No display devices found</td></tr>
+              <tr><td colSpan={6} style={{ ...tdStyle, textAlign: 'center', color: colors.textMuted }}>No display devices found</td></tr>
             )}
             {displays.map((d) => {
               const loc = displayLocation(d);
@@ -149,8 +180,14 @@ export function DisplaysPage() {
                   <td style={tdStyle}>{buildingName(loc.buildingId)}</td>
                   <td style={tdStyle}>{loc.floorNumber ?? '-'} / {loc.sideCode ?? '-'}</td>
                   <td style={tdStyle}><span style={statusPillStyle(d.status)}>{d.status}</span></td>
+                  <td style={tdStyle}><span style={statusPillStyle(d.is_active ? 'ACTIVE' : 'INACTIVE')}>{d.is_active ? 'ACTIVE' : 'INACTIVE'}</span></td>
                   <td style={tdStyle}>
                     <button style={linkBtnStyle} onClick={() => openEdit(d)}>Edit</button>
+                    {d.is_active ? (
+                      <button style={dangerLinkBtnStyle} onClick={() => { setDeactivateError(null); setDeactivateDisplay(d); }}>Deactivate</button>
+                    ) : (
+                      <button style={linkBtnStyle} onClick={() => { setReactivateError(null); setReactivateDisplay(d); }}>Reactivate</button>
+                    )}
                     <button style={dangerLinkBtnStyle} onClick={() => { setDeleteError(null); setDeleteDisplay(d); }}>Delete</button>
                   </td>
                 </tr>
@@ -243,6 +280,33 @@ export function DisplaysPage() {
           <ModalActions>
             <button style={dangerBtn} onClick={handleDelete}>Delete</button>
             <button style={outlineBtn} onClick={() => setDeleteDisplay(null)}>Cancel</button>
+          </ModalActions>
+        </Modal>
+      )}
+
+      {deactivateDisplay && (
+        <Modal title="Deactivate Display" headerColor={colors.modalAmber} onClose={() => setDeactivateDisplay(null)}>
+          <p style={{ marginTop: 0, fontWeight: 700 }}>Deactivate "{deactivateDisplay.device_name}"?</p>
+          <p style={{ color: colors.textMuted, fontSize: 14 }}>
+            This side will show no signage screen until it&apos;s reactivated.<br />
+            The device configuration is kept, so no need to re-add it later.
+          </p>
+          <ModalError>{deactivateError}</ModalError>
+          <ModalActions>
+            <button style={amberBtn} onClick={handleDeactivate}>Deactivate</button>
+            <button style={outlineBtn} onClick={() => setDeactivateDisplay(null)}>Cancel</button>
+          </ModalActions>
+        </Modal>
+      )}
+
+      {reactivateDisplay && (
+        <Modal title="Reactivate Display" headerColor={colors.modalGreen} onClose={() => setReactivateDisplay(null)}>
+          <p style={{ marginTop: 0, fontWeight: 700 }}>Reactivate "{reactivateDisplay.device_name}"?</p>
+          <p style={{ color: colors.textMuted, fontSize: 14 }}>It will resume showing the schedule for its assigned side.</p>
+          <ModalError>{reactivateError}</ModalError>
+          <ModalActions>
+            <button style={greenBtn} onClick={handleReactivate}>Reactivate</button>
+            <button style={outlineBtn} onClick={() => setReactivateDisplay(null)}>Cancel</button>
           </ModalActions>
         </Modal>
       )}

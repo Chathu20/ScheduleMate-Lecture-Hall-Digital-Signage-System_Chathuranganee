@@ -41,12 +41,21 @@ router.get('/:side_id', async (req, res) => {
     const now = new Date();
 
     const [side, settings] = await Promise.all([
-      prisma.side.findUnique({ where: { side_id: sideId }, include: { floor: { include: { building: true } } } }),
+      prisma.side.findUnique({
+        where: { side_id: sideId },
+        include: { floor: { include: { building: true } }, displayDevice: true },
+      }),
       prisma.signageSettings.upsert({ where: { id: 1 }, update: {}, create: { id: 1, ...SETTINGS_DEFAULTS } }),
     ]);
 
     if (!side) {
       return res.status(404).json({ message: 'Side not found' });
+    }
+
+    // A display taken out of service by an admin shows no schedule, even
+    // though the side/room configuration underneath it still exists
+    if (side.displayDevice && !side.displayDevice.is_active) {
+      return res.status(403).json({ message: 'This display has been deactivated', inactive: true });
     }
 
     // Today's date range (UTC midnight to midnight) — sessions are scoped per calendar day

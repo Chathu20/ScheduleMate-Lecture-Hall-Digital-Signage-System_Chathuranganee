@@ -58,11 +58,12 @@ model Lecturer {
 }
 
 model DisplayDevice {
-  display_id  Int    @id @default(autoincrement())
+  display_id  Int     @id @default(autoincrement())
   device_name String
-  status      String @default("OFFLINE")
-  side_id     Int    @unique
-  side        Side   @relation(fields: [side_id], references: [side_id])
+  status      String  @default("OFFLINE")
+  is_active   Boolean @default(true)
+  side_id     Int     @unique
+  side        Side    @relation(fields: [side_id], references: [side_id])
 }
 
 model Admin {
