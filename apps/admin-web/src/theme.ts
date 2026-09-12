@@ -12,8 +12,8 @@ export const colors = {
   cancelledBg: '#f6d2d2', cancelledText: '#8f2020',
   rescheduledBg: '#ffe7bd', rescheduledText: '#9a6800',
 
-  pillOngoingBg: '#b5e6d2', pillOngoingText: '#08784a',
-  pillUpcomingBg: '#a9cbea', pillUpcomingText: '#15528a',
+  pillOngoingBg: '#a9cbea', pillOngoingText: '#15528a',
+  pillUpcomingBg: '#ccebbd', pillUpcomingText: '#26702e',
   pillCancelledBg: '#efb0aa', pillCancelledText: '#9d2b25',
   pillRescheduledBg: '#f8dca8', pillRescheduledText: '#9a6700',
   pillActiveBg: '#b5e6d2', pillActiveText: '#08784a',

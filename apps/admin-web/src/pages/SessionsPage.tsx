@@ -44,7 +44,7 @@ interface Session {
   changes: SessionChange[];
 }
 
-interface ConflictInfo { module: string; lecturer: string; start_time: string; end_time: string; }
+interface ConflictInfo { module: string; lecturer: string; room: string; start_time: string; end_time: string; }
 
 function effectiveSlot(session: Session) {
   if (session.status === 'RESCHEDULED') {
@@ -347,7 +347,7 @@ export function SessionsPage() {
     if (!conflict) return null;
     return (
       <NoteBox kind="danger">
-        Conflicts with: {conflict.module} ({conflict.lecturer}),{' '}
+        Conflicts with: {conflict.module} ({conflict.lecturer}), Room {conflict.room},{' '}
         {fmtTime(conflict.start_time)} - {fmtTime(conflict.end_time)}
       </NoteBox>
     );
