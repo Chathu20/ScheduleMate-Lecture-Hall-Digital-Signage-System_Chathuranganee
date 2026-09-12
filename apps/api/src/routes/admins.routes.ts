@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 import { prisma } from '../lib/prisma';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { requireRole } from '../middleware/requireRole.middleware';
+import { deleteProfilePhotoFile } from '../lib/upload';
 
 const router = Router();
 router.use(authMiddleware);
@@ -12,7 +13,7 @@ router.use(requireRole('SUPER_ADMIN'));
 router.get('/', async (req, res) => {
   try {
     const admins = await prisma.admin.findMany({
-      select: { admin_id: true, username: true, email: true, role: true, is_active: true, locked_until: true },
+      select: { admin_id: true, username: true, email: true, role: true, is_active: true, locked_until: true, profile_photo: true },
     });
     res.json(admins);
   } catch (error) {
@@ -66,7 +67,8 @@ router.put('/:id', async (req, res) => {
 // DELETE an admin
 router.delete('/:id', async (req, res) => {
   try {
-    await prisma.admin.delete({ where: { admin_id: Number(req.params.id) } });
+    const admin = await prisma.admin.delete({ where: { admin_id: Number(req.params.id) } });
+    deleteProfilePhotoFile(admin.profile_photo);
     res.status(204).send();
   } catch (error) {
     console.error(error);

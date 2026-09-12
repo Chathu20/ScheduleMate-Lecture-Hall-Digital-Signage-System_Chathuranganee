@@ -8,6 +8,7 @@ interface Admin {
   email?: string | null;
   role: string;
   is_active?: boolean;
+  profile_photo?: string | null;
 }
 
 interface AuthContextType {
@@ -30,6 +31,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('token', res.data.token);
     localStorage.setItem('admin', JSON.stringify(res.data.admin));
     setAdmin(res.data.admin);
+    // The login response only carries admin_id/username/role — fetch the
+    // full profile (email, photo, active status) right away.
+    await refreshAdmin();
   }
 
   function logout() {

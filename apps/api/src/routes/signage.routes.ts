@@ -27,10 +27,27 @@ function getEffectiveSlot(session: any) {
   };
 }
 
+const SETTINGS_DEFAULTS = {
+  side_duration_seconds: 8,
+  poll_interval_seconds: 30,
+  upcoming_soon_threshold_min: 15,
+  max_upcoming_per_slide: 5,
+  institution_name: 'Sparkline Academy',
+};
+
 router.get('/:side_id', async (req, res) => {
   try {
     const sideId = Number(req.params.side_id);
     const now = new Date();
+
+    const [side, settings] = await Promise.all([
+      prisma.side.findUnique({ where: { side_id: sideId }, include: { floor: { include: { building: true } } } }),
+      prisma.signageSettings.upsert({ where: { id: 1 }, update: {}, create: { id: 1, ...SETTINGS_DEFAULTS } }),
+    ]);
+
+    if (!side) {
+      return res.status(404).json({ message: 'Side not found' });
+    }
 
     // Today's date range (UTC midnight to midnight) — sessions are scoped per calendar day
     const todayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
@@ -112,7 +129,7 @@ router.get('/:side_id', async (req, res) => {
     }
 
     // FR-19: Live Room Status per room on this side
-    const UPCOMING_SOON_MS = 15 * 60 * 1000;
+    const UPCOMING_SOON_MS = settings.upcoming_soon_threshold_min * 60 * 1000;
     const liveRoomStatus = rooms.map((room) => {
       const roomSessions = sessions.filter((s) => {
         const eff = getEffectiveSlot(s);
@@ -143,8 +160,18 @@ router.get('/:side_id', async (req, res) => {
     res.json({
       side_id: sideId,
       server_time: now,
+      location: {
+        building_name: side.floor.building.name,
+        floor_number: side.floor.floor_number,
+        side_code: side.side_code,
+      },
+      settings: {
+        side_duration_seconds: settings.side_duration_seconds,
+        poll_interval_seconds: settings.poll_interval_seconds,
+        institution_name: settings.institution_name,
+      },
       ongoing,
-      upcoming: upcoming.slice(0, 5), // FR-14: configurable count, default 5
+      upcoming: upcoming.slice(0, settings.max_upcoming_per_slide),
       cancelled,
       rescheduled,
       liveRoomStatus,

@@ -1,17 +1,22 @@
-import { useEffect, useState } from 'react';
-import type { FormEvent } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { ChangeEvent, FormEvent } from 'react';
 import apiClient from '../lib/apiClient';
 import { useAuth } from '../context/AuthContext';
+import { Avatar } from '../components/Avatar';
 import { Modal, ModalActions, ModalError } from '../components/Modal';
 import { colors, pageTitleStyle, primaryBtn, outlineBtn, inputStyle, labelStyle, cardStyle } from '../theme';
 
-interface ProfileData { admin_id: number; username: string; email?: string | null; role: string; is_active: boolean; }
+interface ProfileData { admin_id: number; username: string; email?: string | null; role: string; is_active: boolean; profile_photo?: string | null; }
 
 const ROLE_LABELS: Record<string, string> = { SUPER_ADMIN: 'Super Admin', ADMIN: 'Admin' };
 
 export function ProfilePage() {
   const { refreshAdmin } = useAuth();
   const [profile, setProfile] = useState<ProfileData | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
 
   const [editOpen, setEditOpen] = useState(false);
   const [editUsername, setEditUsername] = useState('');
@@ -81,6 +86,47 @@ export function ProfilePage() {
     }
   }
 
+  function handlePhotoButtonClick() {
+    setPhotoError(null);
+    fileInputRef.current?.click();
+  }
+
+  async function handlePhotoSelected(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    setPhotoError(null);
+    setPhotoUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('photo', file);
+      await apiClient.post('/profile/photo', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      await loadProfile();
+      await refreshAdmin();
+    } catch (err: any) {
+      setPhotoError(err.response?.data?.message || 'Failed to upload photo');
+    } finally {
+      setPhotoUploading(false);
+    }
+  }
+
+  async function handleRemovePhoto() {
+    setPhotoError(null);
+    setPhotoUploading(true);
+    try {
+      await apiClient.delete('/profile/photo');
+      await loadProfile();
+      await refreshAdmin();
+    } catch (err: any) {
+      setPhotoError(err.response?.data?.message || 'Failed to remove photo');
+    } finally {
+      setPhotoUploading(false);
+    }
+  }
+
   if (!profile) return null;
 
   return (
@@ -88,15 +134,45 @@ export function ProfilePage() {
       <h1 style={pageTitleStyle}>My Profile</h1>
 
       <div style={{ ...cardStyle, padding: 24, maxWidth: 480 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
-          <div style={{ width: 44, height: 44, borderRadius: '50%', backgroundColor: colors.navy, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 18 }}>
-            {profile.username.slice(0, 1).toUpperCase()}
-          </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 18 }}>
+          <Avatar username={profile.username} photoUrl={profile.profile_photo} size={72} fontSize={26} />
+
           <div>
             <div style={{ fontWeight: 700, fontSize: 16 }}>{profile.username}</div>
-            <div style={{ color: colors.textMuted, fontSize: 13 }}>{ROLE_LABELS[profile.role] || profile.role}</div>
+            <div style={{ color: colors.textMuted, fontSize: 13, marginBottom: 10 }}>{ROLE_LABELS[profile.role] || profile.role}</div>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/png, image/jpeg, image/webp, image/gif"
+              style={{ display: 'none' }}
+              onChange={handlePhotoSelected}
+            />
+
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                type="button"
+                onClick={handlePhotoButtonClick}
+                disabled={photoUploading}
+                style={{ ...outlineBtn, marginLeft: 0, padding: '6px 14px', fontSize: 13 }}
+              >
+                {photoUploading ? 'Uploading...' : 'Change Photo'}
+              </button>
+              {profile.profile_photo && (
+                <button
+                  type="button"
+                  onClick={handleRemovePhoto}
+                  disabled={photoUploading}
+                  style={{ ...outlineBtn, marginLeft: 0, padding: '6px 14px', fontSize: 13, color: colors.danger, borderColor: colors.danger }}
+                >
+                  Remove
+                </button>
+              )}
+            </div>
           </div>
         </div>
+
+        {photoError && <p style={{ color: colors.danger, fontSize: 13, marginTop: -8, marginBottom: 16 }}>{photoError}</p>}
 
         <label style={labelStyle}>Username</label>
         <input style={{ ...inputStyle, backgroundColor: '#f7f7f7' }} value={profile.username} readOnly />

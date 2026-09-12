@@ -6,6 +6,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "--prefix", "apps/admin-web"],
       "port": 5173
+    },
+    {
+      "name": "signage-display",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--prefix", "apps/signage-display", "--", "--port", "5174"],
+      "port": 5174
     }
   ]
 }

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { Avatar } from './Avatar';
 import { colors, fonts } from '../theme';
 
 const navLinkStyle = ({ isActive }: { isActive: boolean }) => ({
@@ -12,11 +13,6 @@ const navLinkStyle = ({ isActive }: { isActive: boolean }) => ({
   fontSize: 14,
   fontWeight: 600 as const,
 });
-
-function getInitials(username?: string) {
-  if (!username) return '?';
-  return username.slice(0, 2).toUpperCase();
-}
 
 export function AppShell() {
   const { admin, logout } = useAuth();
@@ -39,13 +35,9 @@ export function AppShell() {
         <div style={{ position: 'relative' }}>
           <button
             onClick={() => setMenuOpen((o) => !o)}
-            style={{
-              width: 34, height: 34, borderRadius: '50%', backgroundColor: '#3a5a9c', border: 'none',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700,
-              color: '#fff', cursor: 'pointer',
-            }}
+            style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer', borderRadius: '50%' }}
           >
-            {getInitials(admin?.username)}
+            <Avatar username={admin?.username} photoUrl={admin?.profile_photo} />
           </button>
 
           {menuOpen && (

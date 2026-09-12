@@ -76,6 +76,7 @@ model Admin {
   locked_until    DateTime?
   reset_token_hash    String?
   reset_token_expires DateTime?
+  profile_photo   String?
   createdSessions Session[] @relation("CreatedBy")
   changes       SessionChange[]
 }

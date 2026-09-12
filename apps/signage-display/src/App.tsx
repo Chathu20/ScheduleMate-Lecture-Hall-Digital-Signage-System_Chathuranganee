@@ -1,33 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
 import "./index.css";
 
-const API_URL = "http://localhost:4000/api/signage/1";
+const API_BASE = "http://localhost:4000/api/signage";
 
-const SLIDE_DURATION = 8000;
-const POLL_INTERVAL = 30000;
+const DEFAULT_SLIDE_DURATION_MS = 8000;
+const DEFAULT_POLL_INTERVAL_MS = 30000;
 
 type Session = {
   session_id: number;
-  session_date: string;
+  room_code?: string;
+  module: string;
+  lecturer: string;
   start_time: string;
   end_time: string;
-  status: string;
-
-  room?: {
-    room_code: string;
-  };
-
-  module?: {
-    module_code?: string;
-    module_name: string;
-  };
-
-  lecturer?: {
-    full_name: string;
-  };
-
+  session_type: string;
   reason?: string;
-  change_reason?: string;
+  original_start?: string;
+  original_end?: string;
+  original_room?: string;
 };
 
 type RoomStatus = {
@@ -36,879 +26,278 @@ type RoomStatus = {
 };
 
 type SignageData = {
-  side?: {
-    side_code?: string;
-
-    floor?: {
-      floor_number?: number;
-
-      building?: {
-        building_name?: string;
-      };
-    };
+  side_id: number;
+  server_time: string;
+  location: {
+    building_name: string;
+    floor_number: number;
+    side_code: string;
   };
-
-  building?: {
-    building_name?: string;
+  settings: {
+    side_duration_seconds: number;
+    poll_interval_seconds: number;
+    institution_name: string;
   };
-
-  floor?: {
-    floor_number?: number;
-  };
-
-  side_code?: string;
-
-  ongoing?: Session[];
-  upcoming?: Session[];
-  cancelled?: Session[];
-  rescheduled?: Session[];
-
-  liveRoomStatus?: RoomStatus[];
-
-  lastUpdated?: string;
+  ongoing: Session[];
+  upcoming: Session[];
+  cancelled: Session[];
+  rescheduled: Session[];
+  liveRoomStatus: RoomStatus[];
 };
 
-type SlideType =
-  | "ongoing"
-  | "upcoming"
-  | "cancelled"
-  | "rescheduled";
+type SlideType = "ongoing" | "upcoming" | "cancelled" | "rescheduled";
 
-type Slide = {
-  type: SlideType;
-  title: string;
-  sessions: Session[];
+const SLIDE_ORDER: SlideType[] = ["ongoing", "upcoming", "cancelled", "rescheduled"];
+
+const SLIDE_LABELS: Record<SlideType, string> = {
+  ongoing: "Ongoing Lectures & Labs",
+  upcoming: "Upcoming Lectures & Labs",
+  cancelled: "Cancelled Lectures & Labs",
+  rescheduled: "Rescheduled Lectures & Labs",
 };
 
-/* =========================================================
-   FORMAT TIME
-========================================================= */
+function getSideId() {
+  const params = new URLSearchParams(window.location.search);
+  const fromQuery = params.get("side") || params.get("side_id");
+  const parsed = fromQuery ? Number(fromQuery) : NaN;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+}
 
+// Session times are stored as UTC-stamped wall-clock values (see the
+// backend's Date.UTC-based day boundaries), so display must stay pinned to
+// UTC rather than the display's local timezone, or times would drift.
 function formatTime(dateString: string) {
-  const date = new Date(dateString);
-
-  return date.toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return new Date(dateString).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "UTC" });
 }
 
-/* =========================================================
-   FORMAT DATE
-========================================================= */
-
-function formatDate(dateString: string) {
-  const date = new Date(dateString);
-
-  return date.toLocaleDateString([], {
-    weekday: "short",
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
+function formatShortDate(dateString: string) {
+  return new Date(dateString).toLocaleDateString([], { weekday: "short", day: "2-digit", month: "short", timeZone: "UTC" });
 }
 
-/* =========================================================
-   SESSION REASON
-========================================================= */
-
-function getSessionReason(session: Session) {
-  return session.reason || session.change_reason || "";
+function formatStartsIn(startTime: string, now: Date) {
+  const diffMs = new Date(startTime).getTime() - now.getTime();
+  const totalMinutes = Math.max(0, Math.round(diffMs / 60000));
+  if (totalMinutes < 60) return `STARTS IN ${totalMinutes} MIN`;
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `STARTS IN ${hours}H ${minutes}M`;
 }
 
-/* =========================================================
-   ROOM STATUS CLASS
-========================================================= */
-
-function getStatusClass(status: string) {
-  const normalized = status.toLowerCase();
-
-  if (
-    normalized.includes("ongoing") ||
-    normalized.includes("now")
-  ) {
-    return "room-status ongoing";
-  }
-
-  if (normalized.includes("upcoming")) {
-    return "room-status upcoming";
-  }
-
-  if (normalized.includes("finished")) {
-    return "room-status finished";
-  }
-
-  return "room-status available";
+function roomStatusClass(status: string) {
+  if (status === "Ongoing Now") return "dot dot--ongoing";
+  if (status === "Upcoming Soon") return "dot dot--upcoming";
+  if (status === "Session Finished") return "dot dot--finished";
+  return "dot dot--available";
 }
 
-/* =========================================================
-   ROOM STATUS LABEL
-========================================================= */
-
-function getStatusLabel(status: string) {
-  if (status === "Ongoing Now") {
-    return "ONGOING NOW";
-  }
-
-  if (status === "Upcoming Soon") {
-    return "UPCOMING SOON";
-  }
-
-  if (status === "Session Finished") {
-    return "SESSION FINISHED";
-  }
-
-  return "AVAILABLE";
-}
-
-/* =========================================================
-   SESSION CARD
-========================================================= */
-
-function SessionCard({
-  session,
-  type,
-}: {
-  session: Session;
-  type: SlideType;
-}) {
-  const reason = getSessionReason(session);
-
-  return (
-    <div className={`session-card ${type}`}>
-
-      {/* TOP SECTION */}
-      <div className="session-card-top">
-
-        <div>
-          <span className="room-label">
-            ROOM
-          </span>
-
-          <div className="room-code">
-            {session.room?.room_code || "N/A"}
-          </div>
-        </div>
-
-        <div className={`session-badge ${type}`}>
-          {type === "ongoing" && "ONGOING"}
-          {type === "upcoming" && "UPCOMING"}
-          {type === "cancelled" && "CANCELLED"}
-          {type === "rescheduled" && "RESCHEDULED"}
-        </div>
-
-      </div>
-
-      {/* MODULE */}
-      <div className="module-section">
-
-        <div className="module-name">
-          {session.module?.module_name || "Module"}
-        </div>
-
-        {session.module?.module_code && (
-          <div className="module-code">
-            {session.module.module_code}
+function SessionCard({ session, type, now }: { session: Session; type: SlideType; now: Date }) {
+  if (type === "rescheduled") {
+    return (
+      <div className="session-card session-card--rescheduled">
+        <div className="session-card-room">{session.module}</div>
+        {session.original_room && session.original_start && session.original_end && (
+          <div className="session-line session-line--original">
+            Original: Room {session.original_room}, {formatShortDate(session.original_start)}, {formatTime(session.original_start)} - {formatTime(session.original_end)}
           </div>
         )}
+        <div className="session-line session-line--new">
+          New: Room {session.room_code}, {formatShortDate(session.start_time)}, {formatTime(session.start_time)} - {formatTime(session.end_time)}
+        </div>
+        <div className="session-line session-line--lecturer">Lecturer: {session.lecturer}</div>
+        <span className="session-badge session-badge--rescheduled">CANCELLED</span>
+      </div>
+    );
+  }
 
+  return (
+    <div className={`session-card session-card--${type}`}>
+      <div className="session-card-top">
+        <div>
+          <span className="session-card-kicker">Room</span>
+          <div className="session-card-room">{session.room_code || "N/A"}</div>
+        </div>
       </div>
 
-      {/* SESSION DETAILS */}
-      <div className="session-details">
-
-        <div className="detail-item">
-          <span className="detail-label">
-            LECTURER
-          </span>
-
-          <span className="detail-value">
-            {session.lecturer?.full_name || "N/A"}
-          </span>
-        </div>
-
-        <div className="detail-item">
-          <span className="detail-label">
-            DATE
-          </span>
-
-          <span className="detail-value">
-            {formatDate(session.session_date)}
-          </span>
-        </div>
-
-        <div className="detail-item">
-          <span className="detail-label">
-            TIME
-          </span>
-
-          <span className="detail-value time">
-            {formatTime(session.start_time)}
-            {" - "}
-            {formatTime(session.end_time)}
-          </span>
-        </div>
-
+      <div className="session-card-module">{session.module}</div>
+      <div className="session-line session-line--lecturer">{session.lecturer}</div>
+      <div className="session-card-time">
+        {formatTime(session.start_time)} - {formatTime(session.end_time)}
       </div>
 
-      {/* REASON / CHANGE */}
-      {reason && (
-        <div className="reason-box">
-
-          <span className="reason-label">
-            {type === "cancelled"
-              ? "CANCELLATION REASON"
-              : "CHANGE DETAILS"}
-          </span>
-
-          <span className="reason-text">
-            {reason}
-          </span>
-
-        </div>
-      )}
-
+      <div className="session-card-footer">
+        <span className={`session-badge session-badge--${type}`}>
+          {type === "ongoing" && "ONGOING NOW"}
+          {type === "upcoming" && formatStartsIn(session.start_time, now)}
+          {type === "cancelled" && "CANCELLED"}
+        </span>
+        {type === "cancelled" && session.reason && (
+          <span className="session-card-reason">Reason: {session.reason}</span>
+        )}
+      </div>
     </div>
   );
 }
 
-/* =========================================================
-   ROOM STATUS PANEL
-========================================================= */
-
-function RoomStatusPanel({
-  rooms,
-}: {
-  rooms: RoomStatus[];
-}) {
-  return (
-    <section className="room-status-panel">
-
-      <div className="section-title-row">
-
-        <div>
-          <h2>
-            Room Status
-          </h2>
-
-          <p>
-            Current room availability
-          </p>
-        </div>
-
-      </div>
-
-      <div className="room-grid">
-
-        {rooms.length === 0 ? (
-
-          <div className="empty-room">
-            No room status information available
-          </div>
-
-        ) : (
-
-          rooms.map((room) => (
-
-            <div
-              className="room-status-card"
-              key={room.room_code}
-            >
-
-              <div className="room-status-code">
-                {room.room_code}
-              </div>
-
-              <div
-                className={getStatusClass(room.status)}
-              >
-
-                <span className="status-dot"></span>
-
-                {getStatusLabel(room.status)}
-
-              </div>
-
-            </div>
-
-          ))
-
-        )}
-
-      </div>
-
-    </section>
-  );
-}
-
-/* =========================================================
-   MAIN APP
-========================================================= */
-
 function App() {
+  const sideId = useMemo(getSideId, []);
 
-  const [data, setData] =
-    useState<SignageData | null>(null);
+  const [data, setData] = useState<SignageData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [apiError, setApiError] = useState(false);
+  const [notFound, setNotFound] = useState(false);
+  const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
+  const [now, setNow] = useState(new Date());
 
-  const [loading, setLoading] =
-    useState(true);
-
-  const [apiError, setApiError] =
-    useState(false);
-
-  const [currentSlide, setCurrentSlide] =
-    useState<SlideType>("ongoing");
-
-  const [currentTime, setCurrentTime] =
-    useState(new Date());
-
-  /* =======================================================
-     FETCH SIGNAGE DATA
-  ======================================================= */
+  const pollIntervalMs = (data?.settings.poll_interval_seconds ?? DEFAULT_POLL_INTERVAL_MS / 1000) * 1000;
+  const slideDurationMs = (data?.settings.side_duration_seconds ?? DEFAULT_SLIDE_DURATION_MS / 1000) * 1000;
 
   async function fetchSignageData() {
-
     try {
-
-      const response = await fetch(API_URL);
-
-      if (!response.ok) {
-        throw new Error(
-          "Failed to fetch signage data"
-        );
+      const response = await fetch(`${API_BASE}/${sideId}`);
+      if (response.status === 404) {
+        setNotFound(true);
+        setLoading(false);
+        return;
       }
+      if (!response.ok) throw new Error("Failed to fetch signage data");
 
-      const result: SignageData =
-        await response.json();
-
-      /*
-       * Save the latest successful data.
-       */
+      const result: SignageData = await response.json();
       setData(result);
-
-      /*
-       * API is working again.
-       */
       setApiError(false);
-
+      setNotFound(false);
       setLoading(false);
-
     } catch (error) {
-
-      console.error(
-        "Signage API error:",
-        error
-      );
-
-      /*
-       * IMPORTANT:
-       *
-       * We DO NOT clear old data.
-       *
-       * Therefore, if the API goes offline,
-       * the last successful schedule remains
-       * visible on the display.
-       */
-
+      console.error("Signage API error:", error);
+      // Keep any previously-loaded data on screen; only surface a banner.
       setApiError(true);
-
       setLoading(false);
     }
   }
 
-  /* =======================================================
-     INITIAL FETCH + 30 SECOND POLLING
-  ======================================================= */
-
   useEffect(() => {
-
     fetchSignageData();
-
-    const interval = setInterval(() => {
-
-      fetchSignageData();
-
-    }, POLL_INTERVAL);
-
-    return () => {
-      clearInterval(interval);
-    };
-
-  }, []);
-
-  /* =======================================================
-     LIVE CLOCK
-  ======================================================= */
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sideId]);
 
   useEffect(() => {
-
-    const interval = setInterval(() => {
-
-      setCurrentTime(new Date());
-
-    }, 1000);
-
-    return () => {
-      clearInterval(interval);
-    };
-
-  }, []);
-
-  /* =======================================================
-     CREATE SLIDES
-  ======================================================= */
-
-  const slides = useMemo<Slide[]>(() => {
-
-    if (!data) {
-      return [];
-    }
-
-    const result: Slide[] = [];
-
-    /* ONGOING */
-
-    if (
-      data.ongoing &&
-      data.ongoing.length > 0
-    ) {
-
-      result.push({
-        type: "ongoing",
-        title: "Ongoing Now",
-        sessions: data.ongoing,
-      });
-
-    }
-
-    /* UPCOMING */
-
-    if (
-      data.upcoming &&
-      data.upcoming.length > 0
-    ) {
-
-      result.push({
-        type: "upcoming",
-        title: "Upcoming Sessions",
-        sessions: data.upcoming,
-      });
-
-    }
-
-    /* CANCELLED */
-
-    if (
-      data.cancelled &&
-      data.cancelled.length > 0
-    ) {
-
-      result.push({
-        type: "cancelled",
-        title: "Cancelled Sessions",
-        sessions: data.cancelled,
-      });
-
-    }
-
-    /* RESCHEDULED */
-
-    if (
-      data.rescheduled &&
-      data.rescheduled.length > 0
-    ) {
-
-      result.push({
-        type: "rescheduled",
-        title: "Rescheduled Sessions",
-        sessions: data.rescheduled,
-      });
-
-    }
-
-    return result;
-
-  }, [data]);
-
-  /* =======================================================
-     8 SECOND SLIDE ROTATION
-  ======================================================= */
+    const interval = setInterval(fetchSignageData, pollIntervalMs);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pollIntervalMs, sideId]);
 
   useEffect(() => {
+    const interval = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(interval);
+  }, []);
 
-    /*
-     * If there is only one slide,
-     * no rotation is necessary.
-     */
-
-    if (slides.length <= 1) {
-
-      if (slides.length === 1) {
-
-        setCurrentSlide(
-          slides[0].type
-        );
-
-      }
-
-      return;
-    }
-
-    /*
-     * Rotate every 8 seconds.
-     */
-
+  useEffect(() => {
     const interval = setInterval(() => {
-
-      setCurrentSlide((previous) => {
-
-        const currentIndex =
-          slides.findIndex(
-            (slide) =>
-              slide.type === previous
-          );
-
-        const nextIndex =
-          currentIndex === -1
-            ? 0
-            : (currentIndex + 1) %
-              slides.length;
-
-        return slides[nextIndex].type;
-
-      });
-
-    }, SLIDE_DURATION);
-
-    return () => {
-      clearInterval(interval);
-    };
-
-  }, [slides]);
-
-  /* =======================================================
-     ACTIVE SLIDE
-  ======================================================= */
-
-  const activeSlide =
-    slides.find(
-      (slide) =>
-        slide.type === currentSlide
-    ) || slides[0];
-
-  /* =======================================================
-     LOCATION
-  ======================================================= */
-
-  const buildingName =
-    data?.side?.floor?.building
-      ?.building_name ||
-    data?.building?.building_name ||
-    "Sparkline Academy";
-
-  const floorNumber =
-    data?.side?.floor?.floor_number ??
-    data?.floor?.floor_number ??
-    "";
-
-  const sideCode =
-    data?.side?.side_code ||
-    data?.side_code ||
-    "";
-
-  const locationText =
-    floorNumber !== ""
-      ? `${buildingName} • Floor ${floorNumber}${
-          sideCode
-            ? ` • ${sideCode} Side`
-            : ""
-        }`
-      : buildingName;
-
-  /* =======================================================
-     LOADING SCREEN
-  ======================================================= */
+      setCurrentSlideIndex((i) => (i + 1) % SLIDE_ORDER.length);
+    }, slideDurationMs);
+    return () => clearInterval(interval);
+  }, [slideDurationMs]);
 
   if (loading) {
-
     return (
-
-      <div className="signage-page loading-page">
-
-        <div className="loading-content">
-
-          <div className="loading-logo">
-            S
-          </div>
-
-          <h1>
-            ScheduleMate
-          </h1>
-
-          <p>
-            Loading lecture hall schedule...
-          </p>
-
-        </div>
-
+      <div className="signage-root signage-root--loading">
+        <div className="loading-badge">S</div>
+        <h1>ScheduleMate</h1>
+        <p>Loading lecture hall schedule...</p>
       </div>
-
     );
   }
 
-  /* =======================================================
-     MAIN UI
-  ======================================================= */
+  if (notFound) {
+    return (
+      <div className="signage-root signage-root--loading">
+        <div className="loading-badge loading-badge--error">!</div>
+        <h1>Display Not Configured</h1>
+        <p>No location found for side #{sideId}. Check the display's configuration.</p>
+      </div>
+    );
+  }
+
+  const currentType = SLIDE_ORDER[currentSlideIndex];
+  const sessionsByType: Record<SlideType, Session[]> = {
+    ongoing: data?.ongoing || [],
+    upcoming: data?.upcoming || [],
+    cancelled: data?.cancelled || [],
+    rescheduled: data?.rescheduled || [],
+  };
+  const currentSessions = sessionsByType[currentType];
+
+  const buildingName = data?.location.building_name || data?.settings.institution_name || "";
+  const floorNumber = data?.location.floor_number;
+  const sideCode = data?.location.side_code;
+  const locationTitle = floorNumber !== undefined
+    ? `${buildingName} - Floor ${floorNumber} - ${sideCode} Side`
+    : buildingName;
 
   return (
-
-    <div className="signage-page">
-
-      {/* =================================================
-          HEADER
-      ================================================= */}
-
+    <div className="signage-root">
       <header className="signage-header">
-
-        {/* BRAND */}
-
-        <div className="brand-section">
-
-          <div className="brand-logo">
-            S
+        <div>
+          <h1 className="location-title">{locationTitle}</h1>
+          <div className="location-date">
+            {now.toLocaleDateString([], { weekday: "long", day: "2-digit", month: "short", year: "numeric" })}
           </div>
-
-          <div>
-
-            <div className="brand-name">
-              ScheduleMate
-            </div>
-
-            <div className="brand-subtitle">
-              Lecture Hall Digital Signage
-            </div>
-
-          </div>
-
         </div>
-
-        {/* LOCATION */}
-
-        <div className="location-section">
-
-          <div className="location-label">
-            LOCATION
-          </div>
-
-          <div className="location-value">
-            {locationText}
-          </div>
-
+        <div className="signage-clock">
+          {now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })}
         </div>
-
-        {/* CLOCK */}
-
-        <div className="clock-section">
-
-          <div className="clock">
-
-            {currentTime.toLocaleTimeString(
-              [],
-              {
-                hour: "2-digit",
-                minute: "2-digit",
-                second: "2-digit",
-              }
-            )}
-
-          </div>
-
-          <div className="date">
-
-            {currentTime.toLocaleDateString(
-              [],
-              {
-                weekday: "long",
-                day: "2-digit",
-                month: "long",
-                year: "numeric",
-              }
-            )}
-
-          </div>
-
-        </div>
-
       </header>
 
-      {/* =================================================
-          CONNECTION WARNING
-      ================================================= */}
+      <div className={`status-bar status-bar--${currentType}`}>
+        {SLIDE_LABELS[currentType].toUpperCase()}
+      </div>
 
       {apiError && (
-
         <div className="connection-warning">
-
-          <span className="warning-dot"></span>
-
-          Connection temporarily unavailable.
-          Showing the last available schedule.
-
+          Connection temporarily unavailable — showing the last available schedule.
         </div>
-
       )}
 
-      {/* =================================================
-          MAIN CONTENT
-      ================================================= */}
-
       <main className="signage-main">
-
-        {activeSlide ? (
-
-          <section
-            className={`schedule-section ${activeSlide.type}`}
-          >
-
-            {/* SECTION HEADER */}
-
-            <div className="section-header">
-
-              <div>
-
-                <div className="section-kicker">
-                  TODAY'S SCHEDULE
-                </div>
-
-                <h1>
-                  {activeSlide.title}
-                </h1>
-
-              </div>
-
-              <div
-                className={`large-status ${activeSlide.type}`}
-              >
-
-                {activeSlide.type ===
-                  "ongoing" &&
-                  "LIVE NOW"}
-
-                {activeSlide.type ===
-                  "upcoming" &&
-                  "NEXT SESSIONS"}
-
-                {activeSlide.type ===
-                  "cancelled" &&
-                  "NOTICE"}
-
-                {activeSlide.type ===
-                  "rescheduled" &&
-                  "UPDATED"}
-
-              </div>
-
-            </div>
-
-            {/* SESSION CARDS */}
-
-            <div className="session-grid">
-
-              {activeSlide.sessions.map(
-                (session) => (
-
-                  <SessionCard
-                    key={session.session_id}
-                    session={session}
-                    type={activeSlide.type}
-                  />
-
-                )
-              )}
-
-            </div>
-
-          </section>
-
+        {currentSessions.length === 0 ? (
+          <div className="session-empty">No {currentType} lectures or labs right now.</div>
         ) : (
-
-          /* =================================================
-             NO SESSION
-          ================================================= */
-
-          <section className="no-schedule">
-
-            <div className="no-schedule-icon">
-              ✓
-            </div>
-
-            <h1>
-              No Sessions Available
-            </h1>
-
-            <p>
-              There are no ongoing or upcoming
-              sessions for this floor and side.
-            </p>
-
-          </section>
-
+          <div className="session-grid">
+            {currentSessions.map((session) => (
+              <SessionCard key={session.session_id} session={session} type={currentType} now={now} />
+            ))}
+          </div>
         )}
 
-        {/* =================================================
-            ROOM STATUS
-        ================================================= */}
-
-        <RoomStatusPanel
-          rooms={
-            data?.liveRoomStatus || []
-          }
-        />
-
+        <section className="room-status-bar">
+          <div className="room-status-title">
+            Live Room Status{floorNumber !== undefined ? ` - Floor ${floorNumber}${sideCode}` : ""}
+          </div>
+          <div className="room-status-list">
+            {(data?.liveRoomStatus || []).length === 0 ? (
+              <span className="room-status-empty">No rooms configured</span>
+            ) : (
+              data!.liveRoomStatus.map((room) => (
+                <span className="room-status-item" key={room.room_code}>
+                  <span className={roomStatusClass(room.status)} />
+                  {room.room_code} {room.status}
+                </span>
+              ))
+            )}
+          </div>
+        </section>
       </main>
 
-      {/* =================================================
-          FOOTER
-      ================================================= */}
-
       <footer className="signage-footer">
-
-        <div>
-          ScheduleMate • Sparkline Academy
+        <div className="slide-dots">
+          {SLIDE_ORDER.map((type, i) => (
+            <span
+              key={type}
+              className={`slide-dot slide-dot--${type} ${i === currentSlideIndex ? "slide-dot--active" : ""}`}
+            />
+          ))}
         </div>
-
-        <div className="footer-center">
-
-          {slides.length > 1 && (
-
-            <div className="slide-indicators">
-
-              {slides.map((slide) => (
-
-                <span
-                  key={slide.type}
-                  className={
-                    slide.type ===
-                    activeSlide?.type
-                      ? "slide-dot active"
-                      : "slide-dot"
-                  }
-                ></span>
-
-              ))}
-
-            </div>
-
-          )}
-
-        </div>
-
-        <div>
-          Auto-updating display
-        </div>
-
+        <div className="slide-legend">Ongoing &rarr; Upcoming &rarr; Cancelled &rarr; Rescheduled</div>
       </footer>
-
     </div>
   );
 }
