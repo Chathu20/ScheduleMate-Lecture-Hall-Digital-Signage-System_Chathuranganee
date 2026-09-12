@@ -1,5 +1,39 @@
 :root {
   color-scheme: light;
+
+  --color-page-bg: #f4f5f7;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f7f7f7;
+  --color-border: #e0e0e0;
+  --color-table-header: #eeeeee;
+  --color-text: #111111;
+  --color-text-secondary: #374151;
+  --color-text-muted: #6b7280;
+  --color-input-bg: #ffffff;
+  --color-link: #1e6fd9;
+  --color-danger: #c0392b;
+  --color-shadow-sm: rgba(20, 30, 60, 0.06);
+  --color-shadow-md: rgba(0, 0, 0, 0.12);
+  --color-modal-backdrop: rgba(0, 0, 0, 0.45);
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  --color-page-bg: #0b1220;
+  --color-surface: #141b2d;
+  --color-surface-muted: #1b2338;
+  --color-border: #2a3348;
+  --color-table-header: #1c2438;
+  --color-text: #e8ecf5;
+  --color-text-secondary: #c3cbdc;
+  --color-text-muted: #8b95ab;
+  --color-input-bg: #10192b;
+  --color-link: #5b9bf0;
+  --color-danger: #e2564a;
+  --color-shadow-sm: rgba(0, 0, 0, 0.35);
+  --color-shadow-md: rgba(0, 0, 0, 0.5);
+  --color-modal-backdrop: rgba(0, 0, 0, 0.65);
 }
 
 * {
@@ -17,8 +51,9 @@ body,
 
 body {
   font-family: 'Segoe UI', system-ui, Roboto, Arial, sans-serif;
-  background: #f4f5f7;
-  color: #111111;
+  background: var(--color-page-bg);
+  color: var(--color-text);
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 button {

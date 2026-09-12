@@ -11,19 +11,58 @@ body,
   height: 100%;
 }
 
+/* Dark is the kiosk's default look; [data-theme="light"] overrides it (see
+   getTheme() in App.tsx — set via ?theme=light on the display's URL). */
+:root {
+  --sig-bg: #0a1628;
+  --sig-header-bg: #0f1c30;
+  --sig-text: #e7ecf5;
+  --sig-text-strong: #ffffff;
+  --sig-text-muted: #9aa7bd;
+  --sig-text-faint: #7c8aa3;
+  --sig-card-bg: #141f33;
+  --sig-card-border: rgba(255, 255, 255, 0.05);
+  --sig-card-shadow: rgba(0, 0, 0, 0.35);
+  --sig-room-status-bg: #101c30;
+  --sig-room-status-text: #dfe6f2;
+  --sig-dot-inactive: #243449;
+  --sig-warn-bg: #3a2410;
+  --sig-warn-text: #f2c572;
+  --sig-warn-border: #5c3a15;
+}
+
+[data-theme='light'] {
+  --sig-bg: #eef1f6;
+  --sig-header-bg: #ffffff;
+  --sig-text: #1b2740;
+  --sig-text-strong: #0d1526;
+  --sig-text-muted: #5b6b85;
+  --sig-text-faint: #7a879c;
+  --sig-card-bg: #ffffff;
+  --sig-card-border: #e2e6ee;
+  --sig-card-shadow: rgba(20, 30, 60, 0.1);
+  --sig-room-status-bg: #ffffff;
+  --sig-room-status-text: #1b2740;
+  --sig-dot-inactive: #d7dce6;
+  --sig-warn-bg: #fff3d6;
+  --sig-warn-text: #8a5a00;
+  --sig-warn-border: #f0dca0;
+}
+
 body {
   font-family: 'Segoe UI', system-ui, Roboto, Arial, sans-serif;
-  background: #0a1628;
+  background: var(--sig-bg);
 }
 
 .signage-root {
   min-height: 100vh;
   width: 100%;
-  background: #0a1628;
-  color: #e7ecf5;
+  background: var(--sig-bg);
+  color: var(--sig-text);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 /* ===================== HEADER ===================== */
@@ -33,20 +72,21 @@ body {
   justify-content: space-between;
   align-items: flex-start;
   padding: 28px 40px;
-  background: #0f1c30;
+  background: var(--sig-header-bg);
+  border-bottom: 1px solid var(--sig-card-border);
 }
 
 .location-title {
   margin: 0;
   font-size: 28px;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--sig-text-strong);
 }
 
 .location-date {
   margin-top: 6px;
   font-size: 16px;
-  color: #9aa7bd;
+  color: var(--sig-text-muted);
 }
 
 .signage-clock {
@@ -54,11 +94,13 @@ body {
   font-size: 44px;
   font-weight: 700;
   letter-spacing: 2px;
-  color: #ffffff;
+  color: var(--sig-text-strong);
   font-variant-numeric: tabular-nums;
 }
 
 /* ===================== STATUS BAR ===================== */
+/* Status/badge/dot accent colors stay fixed across themes — they're
+   self-contained colored chips that read fine on both light and dark. */
 
 .status-bar {
   padding: 14px 40px;
@@ -87,11 +129,11 @@ body {
 /* ===================== CONNECTION WARNING ===================== */
 
 .connection-warning {
-  background: #3a2410;
-  color: #f2c572;
+  background: var(--sig-warn-bg);
+  color: var(--sig-warn-text);
   padding: 10px 40px;
   font-size: 14px;
-  border-bottom: 1px solid #5c3a15;
+  border-bottom: 1px solid var(--sig-warn-border);
 }
 
 /* ===================== MAIN ===================== */
@@ -113,11 +155,11 @@ body {
 }
 
 .session-card {
-  background: #141f33;
+  background: var(--sig-card-bg);
   border-radius: 14px;
   padding: 24px 28px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--sig-card-border);
+  box-shadow: 0 8px 24px var(--sig-card-shadow);
   position: relative;
 }
 
@@ -150,36 +192,36 @@ body {
 .session-card-kicker {
   font-size: 11px;
   letter-spacing: 1px;
-  color: #7c8aa3;
+  color: var(--sig-text-faint);
   text-transform: uppercase;
 }
 
 .session-card-room {
   font-size: 22px;
   font-weight: 800;
-  color: #ffffff;
+  color: var(--sig-text-strong);
   margin-top: 2px;
 }
 
 .session-card-module {
   font-size: 15px;
-  color: #c7d0e0;
+  color: var(--sig-text);
   margin-top: 10px;
 }
 
 .session-line {
   font-size: 14px;
-  color: #9aa7bd;
+  color: var(--sig-text-muted);
   margin-top: 6px;
 }
 
 .session-line--original {
   text-decoration: line-through;
-  color: #6b7891;
+  color: var(--sig-text-faint);
 }
 
 .session-line--new {
-  color: #3ee08f;
+  color: #1fae74;
   font-weight: 700;
 }
 
@@ -190,7 +232,7 @@ body {
 .session-card-time {
   font-size: 16px;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--sig-text-strong);
   margin-top: 10px;
   font-variant-numeric: tabular-nums;
 }
@@ -238,16 +280,18 @@ body {
 .session-empty {
   padding: 60px 20px;
   text-align: center;
-  color: #7c8aa3;
+  color: var(--sig-text-faint);
   font-size: 18px;
-  background: #141f33;
+  background: var(--sig-card-bg);
+  border: 1px solid var(--sig-card-border);
   border-radius: 14px;
 }
 
 /* ===================== ROOM STATUS ===================== */
 
 .room-status-bar {
-  background: #101c30;
+  background: var(--sig-room-status-bg);
+  border: 1px solid var(--sig-card-border);
   border-radius: 14px;
   padding: 18px 24px;
   margin-top: auto;
@@ -257,7 +301,7 @@ body {
   font-size: 13px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: #8291ab;
+  color: var(--sig-text-muted);
   margin-bottom: 12px;
 }
 
@@ -269,7 +313,7 @@ body {
 
 .room-status-empty {
   font-size: 14px;
-  color: #7c8aa3;
+  color: var(--sig-text-faint);
 }
 
 .room-status-item {
@@ -277,7 +321,7 @@ body {
   align-items: center;
   gap: 8px;
   font-size: 14px;
-  color: #dfe6f2;
+  color: var(--sig-room-status-text);
 }
 
 .dot {
@@ -322,7 +366,7 @@ body {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: #243449;
+  background: var(--sig-dot-inactive);
   transition: background 0.3s;
 }
 
@@ -344,7 +388,7 @@ body {
 
 .slide-legend {
   font-size: 13px;
-  color: #5c6b85;
+  color: var(--sig-text-faint);
 }
 
 /* ===================== LOADING / ERROR ===================== */
@@ -359,11 +403,12 @@ body {
 .signage-root--loading h1 {
   margin: 0;
   font-size: 26px;
+  color: var(--sig-text-strong);
 }
 
 .signage-root--loading p {
   margin: 0;
-  color: #9aa7bd;
+  color: var(--sig-text-muted);
 }
 
 .loading-badge {

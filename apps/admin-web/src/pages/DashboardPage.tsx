@@ -102,8 +102,8 @@ function GradientStatCard({ kind, label, value }: { kind: keyof typeof CARD_THEM
 }
 
 const cardPanelStyle = {
-  backgroundColor: '#fff', borderRadius: 16, padding: 22,
-  boxShadow: '0 4px 20px rgba(20, 30, 60, 0.06)', border: `1px solid ${colors.border}`,
+  backgroundColor: colors.surface, borderRadius: 16, padding: 22,
+  boxShadow: `0 4px 20px ${colors.shadowSm}`, border: `1px solid ${colors.border}`,
   boxSizing: 'border-box' as const,
 };
 

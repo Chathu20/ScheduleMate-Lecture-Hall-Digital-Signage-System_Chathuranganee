@@ -81,7 +81,7 @@ router.patch('/:id/deactivate', async (req, res) => {
   try {
     const display = await prisma.displayDevice.update({
       where: { display_id: Number(req.params.id) },
-      data: { is_active: false },
+      data: { status: 'OFFLINE' },
     });
     res.json(display);
   } catch (error) {
@@ -94,7 +94,7 @@ router.patch('/:id/reactivate', async (req, res) => {
   try {
     const display = await prisma.displayDevice.update({
       where: { display_id: Number(req.params.id) },
-      data: { is_active: true },
+      data: { status: 'ONLINE' },
     });
     res.json(display);
   } catch (error) {

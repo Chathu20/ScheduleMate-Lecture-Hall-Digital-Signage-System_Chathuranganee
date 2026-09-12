@@ -43,7 +43,7 @@ export function ResetPasswordPage() {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.sidebarBg, fontFamily: fonts.base }}>
-      <div style={{ width: 400, maxWidth: '92vw', backgroundColor: '#fff', border: `1px solid ${colors.border}`, borderRadius: 14, padding: '36px 32px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+      <div style={{ width: 400, maxWidth: '92vw', backgroundColor: colors.surface, border: `1px solid ${colors.border}`, borderRadius: 14, padding: '36px 32px', boxShadow: `0 4px 20px ${colors.shadowSm}` }}>
         {success ? (
           <div style={{ textAlign: 'center' }}>
             <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: colors.textDark }}>Success</h1>

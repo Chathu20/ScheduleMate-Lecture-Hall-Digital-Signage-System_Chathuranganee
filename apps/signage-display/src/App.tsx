@@ -63,6 +63,23 @@ function getSideId() {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
 }
 
+// This kiosk runs unattended, so there's no on-screen toggle — the theme is
+// set once via ?theme=light|dark on the display's URL when it's configured
+// (same pattern as ?side=), and remembered after that. Defaults to dark,
+// matching the display's original look.
+type SignageTheme = "light" | "dark";
+
+function getTheme(): SignageTheme {
+  const params = new URLSearchParams(window.location.search);
+  const fromQuery = params.get("theme");
+  if (fromQuery === "light" || fromQuery === "dark") {
+    localStorage.setItem("signage-theme", fromQuery);
+    return fromQuery;
+  }
+  const stored = localStorage.getItem("signage-theme");
+  return stored === "light" ? "light" : "dark";
+}
+
 // Session times are stored as UTC-stamped wall-clock values (see the
 // backend's Date.UTC-based day boundaries), so display must stay pinned to
 // UTC rather than the display's local timezone, or times would drift.
@@ -140,6 +157,11 @@ function SessionCard({ session, type, now }: { session: Session; type: SlideType
 
 function App() {
   const sideId = useMemo(getSideId, []);
+  const theme = useMemo(getTheme, []);
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+  }, [theme]);
 
   const [data, setData] = useState<SignageData | null>(null);
   const [loading, setLoading] = useState(true);

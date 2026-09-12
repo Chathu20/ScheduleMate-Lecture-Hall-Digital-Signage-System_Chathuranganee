@@ -1,11 +1,21 @@
+// Most tokens below resolve to CSS custom properties (see index.css) so the
+// whole app responds to the light/dark toggle without every page needing to
+// know which theme is active. A handful of brand/accent colors (navy,
+// status pill colors, modal header colors) are intentionally fixed across
+// both themes — they're small, self-contained colored elements that already
+// carry their own readable text, so they don't need a dark variant.
 export const colors = {
   navy: '#1a2744',
   headerNavy: '#1a2233',
-  sidebarBg: '#f4f5f7',
-  border: '#e0e0e0',
-  tableHeaderBg: '#eeeeee',
-  textDark: '#111111',
-  textMuted: '#6b7280',
+  sidebarBg: 'var(--color-page-bg)',
+  surface: 'var(--color-surface)',
+  surfaceMuted: 'var(--color-surface-muted)',
+  border: 'var(--color-border)',
+  tableHeaderBg: 'var(--color-table-header)',
+  textDark: 'var(--color-text)',
+  textSecondary: 'var(--color-text-secondary)',
+  textMuted: 'var(--color-text-muted)',
+  inputBg: 'var(--color-input-bg)',
 
   ongoingBg: '#c8d9ed', ongoingText: '#0f4f89',
   upcomingBg: '#ccebbd', upcomingText: '#26702e',
@@ -27,11 +37,15 @@ export const colors = {
   modalGreen: '#1e7145',
   modalPurple: '#5b4fd6',
 
-  linkBlue: '#1e6fd9',
-  danger: '#c0392b',
+  linkBlue: 'var(--color-link)',
+  danger: 'var(--color-danger)',
   warnBg: '#fdeecb',
   warnText: '#8a6215',
   warnBorder: '#f2d99a',
+
+  shadowSm: 'var(--color-shadow-sm)',
+  shadowMd: 'var(--color-shadow-md)',
+  modalBackdrop: 'var(--color-modal-backdrop)',
 };
 
 export const fonts = {
@@ -44,7 +58,7 @@ export const primaryBtn = {
   fontSize: 14,
 };
 export const outlineBtn = {
-  backgroundColor: '#fff', color: '#333', border: '1px solid #ccc',
+  backgroundColor: colors.surface, color: colors.textDark, border: `1px solid ${colors.border}`,
   padding: '10px 20px', borderRadius: 4, cursor: 'pointer', marginLeft: 8,
   fontSize: 14, fontWeight: 600,
 };
@@ -54,11 +68,11 @@ export const greenBtn = { ...primaryBtn, backgroundColor: colors.modalGreen };
 
 export const inputStyle = {
   display: 'block', width: '100%', padding: '9px 10px', marginTop: 4, marginBottom: 12,
-  boxSizing: 'border-box' as const, border: '1px solid #ccc', borderRadius: 4, fontSize: 14,
-  fontFamily: fonts.base,
+  boxSizing: 'border-box' as const, border: `1px solid ${colors.border}`, borderRadius: 4, fontSize: 14,
+  fontFamily: fonts.base, backgroundColor: colors.inputBg, color: colors.textDark,
 };
 export const labelStyle = {
-  fontSize: 12, fontWeight: 700, color: '#555', textTransform: 'uppercase' as const,
+  fontSize: 12, fontWeight: 700, color: colors.textMuted, textTransform: 'uppercase' as const,
   display: 'block', marginBottom: 2,
 };
 
@@ -67,16 +81,16 @@ export const pageTitleStyle = {
 };
 
 export const cardStyle = {
-  backgroundColor: '#fff', border: `1px solid ${colors.border}`, borderRadius: 8,
+  backgroundColor: colors.surface, border: `1px solid ${colors.border}`, borderRadius: 8,
 };
 
 export const tableWrapStyle = {
-  backgroundColor: '#fff', border: `1px solid ${colors.border}`, borderRadius: 8, overflow: 'hidden' as const,
+  backgroundColor: colors.surface, border: `1px solid ${colors.border}`, borderRadius: 8, overflow: 'hidden' as const,
 };
 
 export const thStyle = {
   textAlign: 'left' as const, padding: '10px 14px', fontSize: 13, fontWeight: 700,
-  color: '#374151', backgroundColor: colors.tableHeaderBg, borderBottom: `1px solid ${colors.border}`,
+  color: colors.textSecondary, backgroundColor: colors.tableHeaderBg, borderBottom: `1px solid ${colors.border}`,
   textTransform: 'uppercase' as const,
 };
 
@@ -86,13 +100,13 @@ export const tdStyle = {
 };
 
 export const filterBarStyle = {
-  display: 'flex', gap: 12, alignItems: 'center', backgroundColor: '#fff',
+  display: 'flex', gap: 12, alignItems: 'center', backgroundColor: colors.surface,
   border: `1px solid ${colors.border}`, borderRadius: 8, padding: 14, marginBottom: 16, flexWrap: 'wrap' as const,
 };
 
 export const selectStyle = {
-  padding: '8px 10px', borderRadius: 4, border: '1px solid #ccc', fontSize: 14,
-  fontFamily: fonts.base, backgroundColor: '#fff',
+  padding: '8px 10px', borderRadius: 4, border: `1px solid ${colors.border}`, fontSize: 14,
+  fontFamily: fonts.base, backgroundColor: colors.inputBg, color: colors.textDark,
 };
 
 export const linkBtnStyle = {

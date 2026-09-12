@@ -1,13 +1,15 @@
 import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { Avatar } from './Avatar';
+import { IconSun, IconMoon } from './icons';
 import { colors, fonts } from '../theme';
 
 const navLinkStyle = ({ isActive }: { isActive: boolean }) => ({
   display: 'block',
   padding: '11px 22px',
-  color: isActive ? '#fff' : '#333',
+  color: isActive ? '#fff' : colors.textDark,
   backgroundColor: isActive ? colors.navy : 'transparent',
   textDecoration: 'none',
   fontSize: 14,
@@ -16,6 +18,7 @@ const navLinkStyle = ({ isActive }: { isActive: boolean }) => ({
 
 export function AppShell() {
   const { admin, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -32,46 +35,60 @@ export function AppShell() {
           <span style={{ fontSize: 12, color: '#9aa5b8' }}>Admin Console</span>
         </div>
 
-        <div style={{ position: 'relative' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <button
-            onClick={() => setMenuOpen((o) => !o)}
-            style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer', borderRadius: '50%' }}
+            onClick={toggleTheme}
+            title={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
+            aria-label={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
+            style={{
+              width: 34, height: 34, borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.12)', border: 'none',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff',
+            }}
           >
-            <Avatar username={admin?.username} photoUrl={admin?.profile_photo} />
+            {theme === 'light' ? <IconMoon /> : <IconSun />}
           </button>
 
-          {menuOpen && (
-            <>
-              <div style={{ position: 'fixed', inset: 0, zIndex: 10 }} onClick={() => setMenuOpen(false)} />
-              <div
-                style={{
-                  position: 'absolute', right: 0, top: 44, width: 220, backgroundColor: colors.navy,
-                  borderRadius: 10, padding: 18, boxShadow: '0 10px 30px rgba(0,0,0,0.3)', zIndex: 20,
-                }}
-              >
-                <div style={{ color: '#8fb3e8', fontSize: 12, fontWeight: 700, letterSpacing: 1 }}>WELCOME</div>
-                <div style={{ color: '#fff', fontSize: 16, fontWeight: 700, marginBottom: 14 }}>{admin?.username}</div>
-                <button
-                  onClick={() => { setMenuOpen(false); navigate('/profile'); }}
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setMenuOpen((o) => !o)}
+              style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer', borderRadius: '50%' }}
+            >
+              <Avatar username={admin?.username} photoUrl={admin?.profile_photo} />
+            </button>
+
+            {menuOpen && (
+              <>
+                <div style={{ position: 'fixed', inset: 0, zIndex: 10 }} onClick={() => setMenuOpen(false)} />
+                <div
                   style={{
-                    width: '100%', padding: '10px 0', backgroundColor: '#fff', border: 'none', borderRadius: 6,
-                    fontWeight: 700, fontSize: 14, cursor: 'pointer', marginBottom: 10,
+                    position: 'absolute', right: 0, top: 44, width: 220, backgroundColor: colors.navy,
+                    borderRadius: 10, padding: 18, boxShadow: '0 10px 30px rgba(0,0,0,0.3)', zIndex: 20,
                   }}
                 >
-                  Profile
-                </button>
-                <button
-                  onClick={() => { setMenuOpen(false); logout(); navigate('/login'); }}
-                  style={{
-                    width: '100%', padding: '10px 0', backgroundColor: 'transparent', border: `1.5px solid ${colors.danger}`,
-                    borderRadius: 6, fontWeight: 700, fontSize: 14, cursor: 'pointer', color: colors.danger,
-                  }}
-                >
-                  Logout
-                </button>
-              </div>
-            </>
-          )}
+                  <div style={{ color: '#8fb3e8', fontSize: 12, fontWeight: 700, letterSpacing: 1 }}>WELCOME</div>
+                  <div style={{ color: '#fff', fontSize: 16, fontWeight: 700, marginBottom: 14 }}>{admin?.username}</div>
+                  <button
+                    onClick={() => { setMenuOpen(false); navigate('/profile'); }}
+                    style={{
+                      width: '100%', padding: '10px 0', backgroundColor: '#fff', border: 'none', borderRadius: 6,
+                      fontWeight: 700, fontSize: 14, cursor: 'pointer', marginBottom: 10,
+                    }}
+                  >
+                    Profile
+                  </button>
+                  <button
+                    onClick={() => { setMenuOpen(false); logout(); navigate('/login'); }}
+                    style={{
+                      width: '100%', padding: '10px 0', backgroundColor: 'transparent', border: `1.5px solid ${colors.danger}`,
+                      borderRadius: 6, fontWeight: 700, fontSize: 14, cursor: 'pointer', color: colors.danger,
+                    }}
+                  >
+                    Logout
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </header>
 
@@ -91,7 +108,7 @@ export function AppShell() {
           )}
         </nav>
 
-        <main style={{ flex: 1, backgroundColor: '#fff', padding: 24, minWidth: 0 }}>
+        <main style={{ flex: 1, backgroundColor: colors.surface, padding: 24, minWidth: 0 }}>
           <Outlet />
         </main>
       </div>

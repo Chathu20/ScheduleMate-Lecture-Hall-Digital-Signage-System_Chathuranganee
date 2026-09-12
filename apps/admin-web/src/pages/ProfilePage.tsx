@@ -175,19 +175,19 @@ export function ProfilePage() {
         {photoError && <p style={{ color: colors.danger, fontSize: 13, marginTop: -8, marginBottom: 16 }}>{photoError}</p>}
 
         <label style={labelStyle}>Username</label>
-        <input style={{ ...inputStyle, backgroundColor: '#f7f7f7' }} value={profile.username} readOnly />
+        <input style={{ ...inputStyle, backgroundColor: colors.surfaceMuted }} value={profile.username} readOnly />
 
         <label style={labelStyle}>Email</label>
-        <input style={{ ...inputStyle, backgroundColor: '#f7f7f7' }} value={profile.email || ''} readOnly />
+        <input style={{ ...inputStyle, backgroundColor: colors.surfaceMuted }} value={profile.email || ''} readOnly />
 
         <div style={{ display: 'flex', gap: 16 }}>
           <div style={{ flex: 1 }}>
             <label style={labelStyle}>Role</label>
-            <input style={{ ...inputStyle, backgroundColor: '#f7f7f7' }} value={ROLE_LABELS[profile.role] || profile.role} readOnly />
+            <input style={{ ...inputStyle, backgroundColor: colors.surfaceMuted }} value={ROLE_LABELS[profile.role] || profile.role} readOnly />
           </div>
           <div style={{ flex: 1 }}>
             <label style={labelStyle}>Account Status</label>
-            <input style={{ ...inputStyle, backgroundColor: '#f7f7f7' }} value={profile.is_active ? 'Active' : 'Inactive'} readOnly />
+            <input style={{ ...inputStyle, backgroundColor: colors.surfaceMuted }} value={profile.is_active ? 'Active' : 'Inactive'} readOnly />
           </div>
         </div>
 
