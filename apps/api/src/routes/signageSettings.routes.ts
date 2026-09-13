@@ -9,7 +9,6 @@ const DEFAULTS = {
   side_duration_seconds: 8,
   poll_interval_seconds: 30,
   upcoming_soon_threshold_min: 15,
-  max_upcoming_per_slide: 5,
   institution_name: 'Sparkline Academy',
 };
 
@@ -37,7 +36,6 @@ router.put('/', async (req, res) => {
       side_duration_seconds,
       poll_interval_seconds,
       upcoming_soon_threshold_min,
-      max_upcoming_per_slide,
       institution_name,
     } = req.body;
 
@@ -49,7 +47,6 @@ router.put('/', async (req, res) => {
         side_duration_seconds,
         poll_interval_seconds,
         upcoming_soon_threshold_min,
-        max_upcoming_per_slide,
         institution_name,
       },
     });

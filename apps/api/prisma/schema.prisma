@@ -107,7 +107,6 @@ model SignageSettings {
   side_duration_seconds       Int    @default(8)
   poll_interval_seconds       Int    @default(30)
   upcoming_soon_threshold_min Int    @default(15)
-  max_upcoming_per_slide      Int    @default(5)
   institution_name            String @default("Sparkline Academy")
 }
 

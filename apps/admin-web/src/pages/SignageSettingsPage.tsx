@@ -8,7 +8,6 @@ interface Settings {
   side_duration_seconds: number;
   poll_interval_seconds: number;
   upcoming_soon_threshold_min: number;
-  max_upcoming_per_slide: number;
   institution_name: string;
 }
 
@@ -16,7 +15,6 @@ const DEFAULTS: Settings = {
   side_duration_seconds: 8,
   poll_interval_seconds: 30,
   upcoming_soon_threshold_min: 15,
-  max_upcoming_per_slide: 5,
   institution_name: 'Sparkline Academy',
 };
 
@@ -85,15 +83,10 @@ export function SignageSettingsPage() {
         </div>
 
         <div style={{ display: 'flex', gap: 16 }}>
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: 1, maxWidth: '50%' }}>
             <label style={labelStyle}>"Upcoming Soon" Threshold (min)</label>
             <input type="number" style={inputStyle} value={form.upcoming_soon_threshold_min}
               onChange={(e) => setForm({ ...form, upcoming_soon_threshold_min: Number(e.target.value) })} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label style={labelStyle}>Max Upcoming Sessions per Slide</label>
-            <input type="number" style={inputStyle} value={form.max_upcoming_per_slide}
-              onChange={(e) => setForm({ ...form, max_upcoming_per_slide: Number(e.target.value) })} />
           </div>
         </div>
 
@@ -117,7 +110,6 @@ export function SignageSettingsPage() {
             Slide duration: {DEFAULTS.side_duration_seconds} sec<br />
             Poll interval: {DEFAULTS.poll_interval_seconds} sec<br />
             Upcoming Soon: {DEFAULTS.upcoming_soon_threshold_min} min<br />
-            Max Upcoming: {DEFAULTS.max_upcoming_per_slide}<br />
             Institution: {DEFAULTS.institution_name}
           </p>
           <ModalError>{resetError}</ModalError>

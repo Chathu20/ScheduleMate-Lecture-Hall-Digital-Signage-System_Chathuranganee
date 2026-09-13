@@ -32,7 +32,6 @@ const SETTINGS_DEFAULTS = {
   side_duration_seconds: 8,
   poll_interval_seconds: 30,
   upcoming_soon_threshold_min: 15,
-  max_upcoming_per_slide: 5,
   institution_name: 'Sparkline Academy',
 };
 
@@ -183,7 +182,7 @@ router.get('/:side_id', async (req, res) => {
         institution_name: settings.institution_name,
       },
       ongoing,
-      upcoming: upcoming.slice(0, settings.max_upcoming_per_slide),
+      upcoming,
       cancelled,
       rescheduled,
       liveRoomStatus,
