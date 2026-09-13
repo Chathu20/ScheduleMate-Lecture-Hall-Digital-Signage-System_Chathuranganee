@@ -56,6 +56,38 @@ const SLIDE_LABELS: Record<SlideType, string> = {
   rescheduled: "Rescheduled Lectures & Labs",
 };
 
+// This is a wall-mounted, unattended screen — nobody can scroll it — so a
+// category with more sessions than fit on one screen doesn't scroll or get
+// silently cut off. Instead it's split into fixed-size pages (2 cards each)
+// that rotate through in sequence, same as the categories themselves, and
+// every page of the current category is shown before advancing to the next.
+const CARDS_PER_PAGE = 2;
+
+type Page = {
+  type: SlideType;
+  sessions: Session[];
+  pageNumber: number; // 1-based, for display
+  pageCount: number;
+};
+
+function chunk<T>(items: T[], size: number): T[][] {
+  if (items.length === 0) return [[]];
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) chunks.push(items.slice(i, i + size));
+  return chunks;
+}
+
+function buildPages(sessionsByType: Record<SlideType, Session[]>): Page[] {
+  const pages: Page[] = [];
+  for (const type of SLIDE_ORDER) {
+    const chunks = chunk(sessionsByType[type], CARDS_PER_PAGE);
+    chunks.forEach((sessions, i) => {
+      pages.push({ type, sessions, pageNumber: i + 1, pageCount: chunks.length });
+    });
+  }
+  return pages;
+}
+
 function getSideId() {
   const params = new URLSearchParams(window.location.search);
   const fromQuery = params.get("side") || params.get("side_id");
@@ -168,8 +200,15 @@ function App() {
   const [apiError, setApiError] = useState(false);
   const [notFound, setNotFound] = useState(false);
   const [inactive, setInactive] = useState(false);
-  const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
+  const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [now, setNow] = useState(new Date());
+
+  const pages = useMemo(() => buildPages({
+    ongoing: data?.ongoing || [],
+    upcoming: data?.upcoming || [],
+    cancelled: data?.cancelled || [],
+    rescheduled: data?.rescheduled || [],
+  }), [data]);
 
   const pollIntervalMs = (data?.settings.poll_interval_seconds ?? DEFAULT_POLL_INTERVAL_MS / 1000) * 1000;
   const slideDurationMs = (data?.settings.side_duration_seconds ?? DEFAULT_SLIDE_DURATION_MS / 1000) * 1000;
@@ -225,11 +264,18 @@ function App() {
   }, []);
 
   useEffect(() => {
+    setCurrentPageIndex((i) => (pages.length > 0 ? i % pages.length : 0));
+  }, [pages.length]);
+
+  useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentSlideIndex((i) => (i + 1) % SLIDE_ORDER.length);
+      setCurrentPageIndex((i) => (i + 1) % Math.max(1, pages.length));
     }, slideDurationMs);
     return () => clearInterval(interval);
-  }, [slideDurationMs]);
+    // pages.length is intentionally included: if the schedule changes (poll
+    // refresh) and shrinks the page count, restart the timer so the index
+    // stays in range instead of drifting past the new end.
+  }, [slideDurationMs, pages.length]);
 
   if (loading) {
     return (
@@ -261,14 +307,9 @@ function App() {
     );
   }
 
-  const currentType = SLIDE_ORDER[currentSlideIndex];
-  const sessionsByType: Record<SlideType, Session[]> = {
-    ongoing: data?.ongoing || [],
-    upcoming: data?.upcoming || [],
-    cancelled: data?.cancelled || [],
-    rescheduled: data?.rescheduled || [],
-  };
-  const currentSessions = sessionsByType[currentType];
+  const currentPage = pages[currentPageIndex] ?? pages[0];
+  const currentType = currentPage.type;
+  const currentSessions = currentPage.sessions;
 
   const buildingName = data?.location.building_name || data?.settings.institution_name || "";
   const floorNumber = data?.location.floor_number;
@@ -293,6 +334,9 @@ function App() {
 
       <div className={`status-bar status-bar--${currentType}`}>
         {SLIDE_LABELS[currentType].toUpperCase()}
+        {currentPage.pageCount > 1 && (
+          <span className="status-bar-page"> &middot; {currentPage.pageNumber}/{currentPage.pageCount}</span>
+        )}
       </div>
 
       {apiError && (
@@ -333,10 +377,10 @@ function App() {
 
       <footer className="signage-footer">
         <div className="slide-dots">
-          {SLIDE_ORDER.map((type, i) => (
+          {SLIDE_ORDER.map((type) => (
             <span
               key={type}
-              className={`slide-dot slide-dot--${type} ${i === currentSlideIndex ? "slide-dot--active" : ""}`}
+              className={`slide-dot slide-dot--${type} ${type === currentType ? "slide-dot--active" : ""}`}
             />
           ))}
         </div>

@@ -110,6 +110,12 @@ body {
   color: #ffffff;
 }
 
+.status-bar-page {
+  font-weight: 600;
+  opacity: 0.75;
+  letter-spacing: 0.3px;
+}
+
 .status-bar--ongoing {
   background: #5b4fd6;
 }

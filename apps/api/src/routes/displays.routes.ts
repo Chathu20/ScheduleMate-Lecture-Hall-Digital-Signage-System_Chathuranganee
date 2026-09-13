@@ -76,12 +76,15 @@ router.delete('/:id', async (req, res) => {
 });
 
 // Take a display out of service without deleting its configuration —
-// the signage feed refuses to serve an inactive display's screen
+// the signage feed refuses to serve an inactive display's screen.
+// `is_active` is the admin's on/off switch; `status` (ONLINE/OFFLINE) is a
+// separate field reflecting the device's actual connectivity and is left
+// untouched here.
 router.patch('/:id/deactivate', async (req, res) => {
   try {
     const display = await prisma.displayDevice.update({
       where: { display_id: Number(req.params.id) },
-      data: { status: 'OFFLINE' },
+      data: { is_active: false },
     });
     res.json(display);
   } catch (error) {
@@ -94,7 +97,7 @@ router.patch('/:id/reactivate', async (req, res) => {
   try {
     const display = await prisma.displayDevice.update({
       where: { display_id: Number(req.params.id) },
-      data: { status: 'ONLINE' },
+      data: { is_active: true },
     });
     res.json(display);
   } catch (error) {
