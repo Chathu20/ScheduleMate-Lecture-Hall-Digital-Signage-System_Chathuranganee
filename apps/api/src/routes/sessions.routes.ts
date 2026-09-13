@@ -28,9 +28,9 @@ function deriveDayOfWeek(dateStr: string): string {
   return DAY_NAMES[date.getUTCDay()];
 }
 
-// Find an overlapping ACTIVE session matching the given criteria (room and/or lecturer)
+// Find an overlapping ACTIVE session matching the given criteria (room, lecturer, and/or module)
 async function findConflict(
-  criteria: { room_id?: number; lecturer_id?: number },
+  criteria: { room_id?: number; lecturer_id?: number; module_id?: number },
   session_date: Date,
   start_time: Date,
   end_time: Date,
@@ -76,6 +76,18 @@ function findLecturerConflict(
   excludeSessionId?: number
 ) {
   return findConflict({ lecturer_id }, session_date, start_time, end_time, excludeSessionId);
+}
+
+// A module is duplicated when it already has another ACTIVE session at an
+// overlapping time — prevents the same module being scheduled twice at once
+function findModuleConflict(
+  module_id: number,
+  session_date: Date,
+  start_time: Date,
+  end_time: Date,
+  excludeSessionId?: number
+) {
+  return findConflict({ module_id }, session_date, start_time, end_time, excludeSessionId);
 }
 
 function conflictResponse(conflict: NonNullable<Awaited<ReturnType<typeof findConflict>>>) {
@@ -210,6 +222,23 @@ router.post('/', async (req: AuthenticatedRequest, res) => {
       });
     }
 
+    // ...and for the same module already being taught at an overlapping time
+    // (prevents accidentally scheduling a duplicate session for one module)
+    const moduleConflict = await findModuleConflict(
+      module_id,
+      parsedDate,
+      parsedStart,
+      parsedEnd
+    );
+
+    if (moduleConflict) {
+      return res.status(409).json({
+        message:
+          'This module already has a session scheduled for an overlapping time slot',
+        conflictingSession: conflictResponse(moduleConflict),
+      });
+    }
+
     const recurrence_group_id = repeat_weekly ? crypto.randomUUID() : null;
     const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
     const occurrences = repeat_weekly ? RECURRING_WEEKLY_OCCURRENCES : 1;
@@ -224,12 +253,15 @@ router.post('/', async (req: AuthenticatedRequest, res) => {
 
       if (i > 0) {
         // For occurrences after the first, silently skip any that conflict
-        // on either the room or the lecturer
+        // on the room, the lecturer, or the module
         const occRoomConflict = await findRoomConflict(room_id, occDate, occStart, occEnd);
         const occLecturerConflict = occRoomConflict
           ? null
           : await findLecturerConflict(lecturer_id, occDate, occStart, occEnd);
-        if (occRoomConflict || occLecturerConflict) {
+        const occModuleConflict = occRoomConflict || occLecturerConflict
+          ? null
+          : await findModuleConflict(module_id, occDate, occStart, occEnd);
+        if (occRoomConflict || occLecturerConflict || occModuleConflict) {
           skippedCount++;
           continue;
         }
@@ -301,6 +333,7 @@ router.put('/:id', async (req, res) => {
     // otherwise keep existing values
     const newRoomId = room_id ?? existing.room_id;
     const newLecturerId = lecturer_id ?? existing.lecturer_id;
+    const newModuleId = module_id ?? existing.module_id;
 
     const newDate = session_date
       ? new Date(session_date)
@@ -345,6 +378,23 @@ router.put('/:id', async (req, res) => {
         message:
           'This lecturer is already scheduled in another room during an overlapping time slot',
         conflictingSession: conflictResponse(lecturerConflict),
+      });
+    }
+
+    // Check for the module already being taught elsewhere, excluding this session itself
+    const moduleConflict = await findModuleConflict(
+      newModuleId,
+      newDate,
+      newStart,
+      newEnd,
+      sessionId
+    );
+
+    if (moduleConflict) {
+      return res.status(409).json({
+        message:
+          'This module already has a session scheduled for an overlapping time slot',
+        conflictingSession: conflictResponse(moduleConflict),
       });
     }
 
@@ -521,6 +571,22 @@ router.patch('/:id/reschedule', async (req: AuthenticatedRequest, res) => {
         message:
           'The lecturer is already scheduled in another room during that time slot',
         conflictingSession: conflictResponse(lecturerConflict),
+      });
+    }
+
+    const moduleConflict = await findModuleConflict(
+      session.module_id,
+      parsedDate,
+      parsedStart,
+      parsedEnd,
+      sessionId
+    );
+
+    if (moduleConflict) {
+      return res.status(409).json({
+        message:
+          'This module already has another session scheduled for that time slot',
+        conflictingSession: conflictResponse(moduleConflict),
       });
     }
 
