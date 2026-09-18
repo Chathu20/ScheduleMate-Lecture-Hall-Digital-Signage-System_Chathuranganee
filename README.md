@@ -195,7 +195,7 @@ npx prisma generate
 npx prisma db seed
 ```
 
-This creates all tables and inserts one default Super Admin account (`testadmin` / `password123` — see [Default Login](#default-login)). Buildings, rooms, modules, lecturers and sessions are created afterwards through the Admin Console UI.
+This creates all tables and inserts one default Super Admin account (`Super Admin` / `SuperAdmin123` — see [Default Login](#default-login)). Buildings, rooms, modules, lecturers and sessions are created afterwards through the Admin Console UI.
 
 > The admin-web and signage-display apps talk to the API at `http://localhost:4000` (see `apps/admin-web/src/lib/apiClient.ts` and `apps/signage-display/src/App.tsx`) — no `.env` file is needed for them in local development. If you deploy the API elsewhere, update `API_ORIGIN` / `API_BASE` in those two files.
 
@@ -235,7 +235,7 @@ After seeding, sign in to the Admin Console with:
 
 | Username | Password | Role |
 |---|---|---|
-| `testadmin` | `password123` | Super Admin |
+| `Super Admin` | `SuperAdmin123` | Super Admin |
 
 Change this password (or create additional admin accounts) from **My Profile** / **Manage Admins** after first login.
 
