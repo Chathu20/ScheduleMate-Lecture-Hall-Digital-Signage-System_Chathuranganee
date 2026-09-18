@@ -50,6 +50,8 @@ The project has three parts that work together:
 **Signage Display (Kiosk)**
 - Auto-rotating full-screen slides grouped by status: Ongoing → Upcoming → Cancelled → Rescheduled
 - Each slide shows at most 2 session cards at a time; if a status has more than 2 sessions, they auto-paginate 2-at-a-time through that status before moving to the next one
+- Session cards always render at a fixed, consistent size — a slide with only 1 card does not stretch that card to fill the row, it stays the same size it would be next to a second card
+- Live header clock (HH:MM:SS, ticking every second) and date for the floor/side the screen is mounted on
 - Live room status strip for the floor/side the screen is mounted on
 - Auto-polls the API on an interval so schedule changes made in the admin console appear on screen without a manual refresh
 - Dark, high-contrast theme designed for hallway readability
@@ -104,19 +106,15 @@ The project has three parts that work together:
 
 ![Profile](docs/screenshots/10-profile.png)
 
-### Signage Display (Kiosk Screen)
+### Signage Display 
 
-**Ongoing sessions, page 1 of 2**
+**Live clock** — the header clock now ticks with seconds (`HH:MM:SS`)
 
-![Signage Ongoing](docs/screenshots/11-signage-ongoing.png)
+![Signage Live Clock](docs/screenshots/15-signage-live-clock.png)
 
-**Ongoing sessions, page 2 of 2** — 2-cards-at-a-time pagination within the same status
+**Single-card slide** — a lone card keeps the same size as one card in a 2-card row, instead of stretching to fill the screen
 
-![Signage Ongoing Page 2](docs/screenshots/12-signage-slide2.png)
-
-**Rescheduled session** — shows the original (struck-through) slot alongside the new slot
-
-![Signage Rescheduled](docs/screenshots/13-signage-rescheduled.png)
+![Signage Single Card](docs/screenshots/16-signage-single-card.png)
 
 ---
 
@@ -261,7 +259,7 @@ Change this password (or create additional admin accounts) from **My Profile** /
 - Every physical screen is a browser pointed at `signage-display`'s URL with a `?side=<side_id>` query parameter, where `side_id` identifies one Building → Floor → Side (a group of rooms, e.g. the rooms on one side of one floor of one building).
 - The app fetches `GET /api/signage/:side_id` from the API, which returns that side's sessions split into four categories — **Ongoing**, **Upcoming**, **Cancelled**, **Rescheduled** — along with the side's location label and a live per-room status strip.
 - Slides rotate automatically (default every 8 seconds, configurable in Signage Settings) in a fixed order: all Ongoing pages, then all Upcoming pages, then all Cancelled pages, then all Rescheduled pages, then back to Ongoing.
-- Each slide shows **at most 2 session cards**. If a category has more than 2 sessions, they are shown 2-at-a-time across multiple pages of that same category (e.g. 10 Ongoing sessions → 5 pages of 2) before the rotation moves on to the next category — there is no limit on the total number of sessions that can be displayed this way.
+- Each slide shows **at most 2 session cards**, laid out in a fixed 2-column grid so a single card is never stretched to fill the row — it stays the same size whether it's alone or paired with a second card. If a category has more than 2 sessions, they are shown 2-at-a-time across multiple pages of that same category (e.g. 10 Ongoing sessions → 5 pages of 2) before the rotation moves on to the next category — there is no limit on the total number of sessions that can be displayed this way.
 - The API is polled on an interval (default 30 seconds, configurable) so a session created, edited, cancelled or rescheduled in the admin console appears on the physical screen shortly after, without reloading the page.
 - If an admin marks the display **Inactive** on the Displays page, the feed responds with a 403 and the screen shows a dedicated "Display Inactive" message instead of any schedule data.
 - **Switching a physical screen to show a different location** is done by changing the `?side=<id>` value in that screen's browser URL to the `side_id` of the Side you want it to show — the system does not automatically rotate one physical screen between multiple locations; one screen shows one Side at a time.
