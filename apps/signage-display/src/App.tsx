@@ -328,7 +328,7 @@ function App() {
           </div>
         </div>
         <div className="signage-clock">
-          {now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })}
+          {now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}
         </div>
       </header>
 
